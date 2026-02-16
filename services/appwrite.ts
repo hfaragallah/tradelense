@@ -22,7 +22,189 @@ export const COLLECTIONS = {
     TRADES: 'trades',
     PROFILES: 'profiles',
     FEEDBACK: 'feedback',
+    FOLLOWS: 'follows',
+    POINTS_HISTORY: 'points_history',
+    HIVE_REGISTRATIONS: 'hive_registrations', // Added for Hive Registration
 };
+
+// ... existing login/register ...
+
+export async function registerForHive(email: string, preference: string, source: string = 'web') {
+    try {
+        return await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.HIVE_REGISTRATIONS,
+            ID.unique(),
+            {
+                email,
+                preference,
+                source,
+                timestamp: new Date().toISOString()
+            }
+        );
+    } catch (error) {
+        console.error('Error registering for Hive:', error);
+        throw error;
+    }
+}
+
+// ... existing login/register ...
+
+// --- Social Functions ---
+
+export async function followUser(followerId, followingId) {
+    try {
+        // Create follow record
+        await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            ID.unique(),
+            { followerId, followingId, timestamp: new Date().toISOString() }
+        );
+
+        // Update counts (optimistic or separate logic needed for strict consistency)
+        // Note: Ideally use Appwrite Functions for increments to be atomic
+        const followingProfile = await getProfile(followingId);
+        if (followingProfile) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followingProfile.$id, {
+                followersCount: (followingProfile.followersCount || 0) + 1
+            });
+        }
+
+        const followerProfile = await getProfile(followerId);
+        if (followerProfile) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followerProfile.$id, {
+                followingCount: (followerProfile.followingCount || 0) + 1
+            });
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error following user:', error);
+        throw error;
+    }
+}
+
+export async function unfollowUser(followerId, followingId) {
+    try {
+        // Find the document first
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [
+                Query.equal('followerId', followerId),
+                Query.equal('followingId', followingId)
+            ]
+        );
+
+        if (response.documents.length > 0) {
+            await databases.deleteDocument(DATABASE_ID, COLLECTIONS.FOLLOWS, response.documents[0].$id);
+
+            // Decrement counts
+            const followingProfile = await getProfile(followingId);
+            if (followingProfile) {
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followingProfile.$id, {
+                    followersCount: Math.max(0, (followingProfile.followersCount || 0) - 1)
+                });
+            }
+
+            const followerProfile = await getProfile(followerId);
+            if (followerProfile) {
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followerProfile.$id, {
+                    followingCount: Math.max(0, (followerProfile.followingCount || 0) - 1)
+                });
+            }
+        }
+        return true;
+    } catch (error) {
+        console.error('Error unfollowing user:', error);
+        throw error;
+    }
+}
+
+export async function getFollowers(userId) {
+    try {
+        return await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [Query.equal('followingId', userId)]
+        );
+    } catch (error) {
+        return { documents: [], total: 0 };
+    }
+}
+
+export async function getFollowing(userId) {
+    try {
+        return await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [Query.equal('followerId', userId)]
+        );
+    } catch (error) {
+        return { documents: [], total: 0 };
+    }
+}
+
+export async function checkIsFollowing(followerId, followingId) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [
+                Query.equal('followerId', followerId),
+                Query.equal('followingId', followingId)
+            ]
+        );
+        return response.documents.length > 0;
+    } catch (error) {
+        return false;
+    }
+}
+
+// --- Leaderboard Functions ---
+
+export async function getLeaderboard(limit = 10) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.PROFILES,
+            [
+                Query.orderDesc('reputationScore'),
+                Query.limit(limit)
+            ]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        return [];
+    }
+}
+
+// --- Gamification Functions ---
+
+export async function awardPoints(userId, amount, action) {
+    try {
+        // Log history
+        await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.POINTS_HISTORY,
+            ID.unique(),
+            { userId, points: amount, action, timestamp: new Date().toISOString() }
+        );
+
+        // Update profile
+        const profile = await getProfile(userId);
+        if (profile) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, profile.$id, {
+                points: (profile.points || 0) + amount
+            });
+        }
+    } catch (error) {
+        console.error('Error awarding points:', error);
+    }
+}
+
 
 export async function login(email, password) {
     try {

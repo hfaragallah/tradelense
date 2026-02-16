@@ -185,7 +185,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       {userProfile?.avatar ? (
                         <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" />
                       ) : (
-                        <span className="font-bold text-sm text-text-primary bg-surface w-full h-full flex items-center justify-center">{userProfile?.name.charAt(0)}</span>
+                        <span className="font-bold text-sm text-text-primary bg-surface w-full h-full flex items-center justify-center">{userProfile?.name?.charAt(0) || '?'}</span>
                       )}
                     </div>
                     {/* Status Indicator */}
@@ -227,7 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {userProfile?.avatar ? (
                   <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="font-bold text-xl text-text-primary">{userProfile?.name.charAt(0)}</span>
+                  <span className="font-bold text-xl text-text-primary">{userProfile?.name?.charAt(0) || '?'}</span>
                 )}
               </div>
               <div>

@@ -85,6 +85,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
 }) => {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [errorAi, setErrorAi] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
   const ANALYSIS_COST = 100;
@@ -103,8 +104,13 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
     if (!onDeductPoints(ANALYSIS_COST)) return;
 
     setLoadingAi(true);
+    setErrorAi(null);
     const result = await analyzeTrade(trade);
-    setAiAnalysis(result);
+    if (result) {
+      setAiAnalysis(result);
+    } else {
+      setErrorAi("Analysis failed. Please check your API Key quota or enable billing in Google Cloud.");
+    }
     setLoadingAi(false);
   };
 
@@ -481,6 +487,14 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
             <div className="flex flex-col items-center justify-center py-12 text-text-muted">
               <Loader2 size={32} className="animate-spin mb-3 text-status-neutral" />
               <p className="text-sm">Evaluating structure and confirmation signals...</p>
+            </div>
+          )}
+
+          {errorAi && (
+            <div className="flex flex-col items-center justify-center py-12 text-status-risk animate-in fade-in">
+              <AlertOctagon size={32} className="mb-3" />
+              <p className="font-bold">Analysis Unavailable</p>
+              <p className="text-sm text-text-muted mt-1">{errorAi}</p>
             </div>
           )}
 

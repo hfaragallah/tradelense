@@ -3,7 +3,7 @@ import { Trade, AIAnalysisResult, TimeHorizon } from "../types";
 
 // Helper to safely get API key
 const getApiKey = (): string | undefined => {
-  const key = import.meta.env.GEMINI_API_KEY;
+  const key = import.meta.env.VITE_GEMINI_API_KEY;
   if (!key) {
     console.error("DEBUG: GEMINI_API_KEY is missing. Check your .env file and restart the server.");
   } else {
@@ -72,7 +72,7 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -80,9 +80,15 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
     const response = await model.generateContent(prompt);
     const text = response.response.text();
-    if (!text) return null;
+    if (!text) {
+      console.error("AI returned empty text");
+      return null;
+    }
 
-    const result = JSON.parse(text) as AIAnalysisResult;
+    // Clean up markdown block if present
+    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+
+    const result = JSON.parse(cleanText) as AIAnalysisResult;
 
     // Attach usage metadata if available
     if (response.response.usageMetadata) {
@@ -95,9 +101,10 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
     return result;
 
-  } catch (error) {
-    // Security Best Practice: Do not log or return raw error details that might expose internal structure or keys
-    console.error("Analysis service interruption.");
+  } catch (error: any) {
+    console.error("Analysis service interruption:", error);
+    // Return a specific error object or string if possible, but currently returns null
+    // You might want to throw or return an error object in the future
     return null;
   }
 };

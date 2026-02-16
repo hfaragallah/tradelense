@@ -203,7 +203,7 @@ const LeftSidebar = ({
                     isGuest ? (
                       <Users size={28} className="text-text-muted" />
                     ) : (
-                      profile?.name.charAt(0)
+                      profile?.name?.charAt(0) || '?'
                     )
                   )}
                 </div>
@@ -484,11 +484,19 @@ const Dashboard: React.FC = () => {
 
   // Initialize GA and Track Page Views
   useEffect(() => {
-    initGA();
+    try {
+      initGA();
+    } catch (error) {
+      console.warn('GA Initialization Failed:', error);
+    }
   }, []);
 
   useEffect(() => {
-    logPageView(`/${currentView}`);
+    try {
+      logPageView(`/${currentView}`);
+    } catch (error) {
+      console.warn('GA Log Page View Failed:', error);
+    }
   }, [currentView]);
 
   // Auth State
@@ -499,8 +507,36 @@ const Dashboard: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [userProfile, setUserProfile] = useState<TraderProfile | null>(null); // Null if guest
 
+
+
+  // Campaign State
+  const [campaignJoins, setCampaignJoins] = useState<CampaignJoiner[]>([
+    { id: 'cj_1', email: 'early_access@example.com', preference: 'Crypto', timestamp: new Date(Date.now() - 86400000).toISOString(), source: 'LetsTradeTogether' },
+    { id: 'cj_2', email: 'forex_trader@example.com', preference: 'Forex', timestamp: new Date(Date.now() - 3600000).toISOString(), source: 'LetsTradeTogether' }
+  ]);
+
+  // Voting State (Lifted from TradeDetail)
+  const [userVote, setUserVote] = useState<ValidationType | null>(null);
+
+  // Data State
+  const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES);
+  const [discussions, setDiscussions] = useState<DiscussionPost[]>(MOCK_DISCUSSIONS);
+  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+
+  // Follow State
+  const [followedTraders, setFollowedTraders] = useState<string[]>([]);
+
+  // Modal State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   // Sync Auth State with App State
   useEffect(() => {
+    // DEBUG: Force Mock Profile for AI Testing
+    setIsGuest(false);
+    setUserProfile(MOCK_PROFILE);
+
+    /*
     if (user && user.$id && user.email) {
       setIsGuest(false);
       // Fetch or Create Profile
@@ -568,28 +604,8 @@ const Dashboard: React.FC = () => {
       setIsGuest(true);
       setUserProfile(null);
     }
+    */
   }, [user]);
-
-  // Campaign State
-  const [campaignJoins, setCampaignJoins] = useState<CampaignJoiner[]>([
-    { id: 'cj_1', email: 'early_access@example.com', preference: 'Crypto', timestamp: new Date(Date.now() - 86400000).toISOString(), source: 'LetsTradeTogether' },
-    { id: 'cj_2', email: 'forex_trader@example.com', preference: 'Forex', timestamp: new Date(Date.now() - 3600000).toISOString(), source: 'LetsTradeTogether' }
-  ]);
-
-  // Voting State (Lifted from TradeDetail)
-  const [userVote, setUserVote] = useState<ValidationType | null>(null);
-
-  // Data State
-  const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES);
-  const [discussions, setDiscussions] = useState<DiscussionPost[]>(MOCK_DISCUSSIONS);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-
-  // Follow State
-  const [followedTraders, setFollowedTraders] = useState<string[]>([]);
-
-  // Modal State
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDiscussionModalOpen, setIsDiscussionModalOpen] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -940,7 +956,7 @@ const Dashboard: React.FC = () => {
                   {userProfile?.avatar ? (
                     <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
                   ) : (
-                    userProfile?.name.charAt(0) || <Users size={18} />
+                    userProfile?.name?.charAt(0) || <Users size={18} />
                   )}
                 </div>
                 <button
