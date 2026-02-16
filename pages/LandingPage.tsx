@@ -9,7 +9,7 @@ const LandingPage: React.FC = () => {
             <SEO
                 title="Home"
                 description="TraderLense - The AI-Powered Social Trading Platform. Validate ideas, track bias, and trade with swarm intelligence."
-                url="https://traderlense.app"
+                url="https://traderlense.com"
             />
 
             {/* Navbar (Landing Page Specific) */}

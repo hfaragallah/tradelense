@@ -1076,7 +1076,7 @@ const Dashboard: React.FC = () => {
       <SEO
         title="Dashboard"
         description="Your AI-powered trading command center."
-        url="https://traderlense.app/app"
+        url="https://traderlense.com/app"
       />
       <Layout
         activeView={currentView}
