@@ -1,13 +1,13 @@
-import { 
-  UserSettings, Trade, TradeType, TimeHorizon, RationaleTag, 
-  TraderProfile, MarketPulse, LeaderboardEntry, TrustScoreData, 
-  DiscussionPost, DiscussionTag, Notification, NotificationType, 
-  PremiumPackage 
+import {
+  UserSettings, Trade, TradeType, TimeHorizon, RationaleTag,
+  TraderProfile, MarketPulse, LeaderboardEntry, TrustScoreData,
+  DiscussionPost, DiscussionTag, Notification, NotificationType,
+  PremiumPackage
 } from './types';
 
 export const DEFAULT_SETTINGS: UserSettings = {
   profile: {
-    email: 'alex@tradelens.app',
+    email: 'alex@traderlense.app',
     bio: 'Swing trader focused on crypto and macro trends. Risk management first.',
     visibility: 'Public'
   },

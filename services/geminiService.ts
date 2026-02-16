@@ -23,7 +23,7 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const prompt = `
-    You are TradeLens AI, a conservative, risk-aware trading assistant for a freemium platform.
+    You are TraderLense AI, a conservative, risk-aware trading assistant for a freemium platform.
     
     MISSION:
     - Reduce emotional trading (FOMO, revenge trading).

@@ -109,7 +109,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
   };
 
   const handleShare = () => {
-    const text = `TradeLens Verdict:\nAsset: ${trade.asset}\nConfidence: ${trade.confidenceScore}%\nCrowd: ${trade.crowd.agree} Agree vs ${trade.crowd.disagree} Disagree\nLink: tradelens.app/t/${trade.id}`;
+    const text = `TraderLense Verdict:\nAsset: ${trade.asset}\nConfidence: ${trade.confidenceScore}%\nCrowd: ${trade.crowd.agree} Agree vs ${trade.crowd.disagree} Disagree\nLink: tradelens.app/t/${trade.id}`;
     navigator.clipboard.writeText(text);
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2000);

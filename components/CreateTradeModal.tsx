@@ -263,7 +263,7 @@ export const CreateTradeModal: React.FC<CreateTradeModalProps> = ({ isOpen, onCl
           {/* Section 2: Levels */}
           <div className="p-4 bg-surface/30 rounded-xl border border-surface/50">
             <h3 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
-              <Tooltip content="TradeLens recommends a Risk:Reward ratio of at least 1:2. Always set a hard Stop Loss.">
+              <Tooltip content="TraderLense recommends a Risk:Reward ratio of at least 1:2. Always set a hard Stop Loss.">
                 <Info size={16} className="text-status-neutral cursor-help" />
               </Tooltip>
               Trade Levels

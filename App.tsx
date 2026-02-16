@@ -411,7 +411,7 @@ const RightSidebar = ({
         <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 text-[10px] text-text-muted justify-center text-center mt-4">
           <a href="#" className="hover:underline">Share Profile</a>
           <a href="#" className="hover:underline">Report</a>
-          <span>TradeLens © 2024</span>
+          <span>TraderLense © 2024</span>
         </div>
       </div>
     );

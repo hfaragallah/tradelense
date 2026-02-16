@@ -32,7 +32,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                         <div>
                             <h3 className="font-bold text-status-warning mb-2">IMPORTANT TRADING DISCLAIMER</h3>
                             <p className="text-text-primary text-sm leading-relaxed">
-                                TradeLens is an <strong>educational and informational platform only</strong>. All trading ideas,
+                                TraderLense is an <strong>educational and informational platform only</strong>. All trading ideas,
                                 analyses, and signals shared on this platform are for <strong>guidance purposes only</strong>.
                                 You, as the user, are solely responsible for your trading decisions and outcomes.
                             </p>
@@ -48,7 +48,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                             <span className="text-status-neutral">1.</span> Acceptance of Terms
                         </h2>
                         <p className="text-text-secondary leading-relaxed">
-                            By accessing and using TradeLens, you accept and agree to be bound by these Terms and Conditions.
+                            By accessing and using TraderLense, you accept and agree to be bound by these Terms and Conditions.
                             If you do not agree to these terms, please do not use this platform.
                         </p>
                     </section>
@@ -60,7 +60,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                         </h2>
                         <div className="space-y-3 text-text-secondary leading-relaxed">
                             <p>
-                                <strong className="text-text-primary">TradeLens does NOT provide financial, investment, or trading advice.</strong>
+                                <strong className="text-text-primary">TraderLense does NOT provide financial, investment, or trading advice.</strong>
                                 The content on this platform, including but not limited to:
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">
@@ -104,7 +104,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                         </h2>
                         <div className="space-y-3 text-text-secondary leading-relaxed">
                             <p className="font-bold text-text-primary">
-                                TradeLens, its owners, operators, contributors, and affiliates SHALL NOT BE LIABLE for:
+                                TraderLense, its owners, operators, contributors, and affiliates SHALL NOT BE LIABLE for:
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">
                                 <li>Any trading losses or financial damages you incur</li>
@@ -126,7 +126,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                             <span className="text-status-neutral">5.</span> Platform Purpose
                         </h2>
                         <p className="text-text-secondary leading-relaxed">
-                            TradeLens is designed as a <strong className="text-text-primary">community learning platform</strong> where
+                            TraderLense is designed as a <strong className="text-text-primary">community learning platform</strong> where
                             traders can share ideas, discuss strategies, and learn from each other. All content is user-generated
                             and should be treated as opinions and perspectives, not professional advice.
                         </p>
@@ -138,7 +138,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                             <span className="text-status-neutral">6.</span> User-Generated Content
                         </h2>
                         <p className="text-text-secondary leading-relaxed">
-                            Trade ideas and analyses posted by users represent their personal opinions only. TradeLens does not
+                            Trade ideas and analyses posted by users represent their personal opinions only. TraderLense does not
                             verify, endorse, or guarantee the accuracy of user-generated content. Users who share trades are not
                             financial advisors and may not be qualified to provide trading advice.
                         </p>
@@ -179,9 +179,9 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                             <span className="text-status-neutral">9.</span> Platform Points & Features
                         </h2>
                         <p className="text-text-secondary leading-relaxed">
-                            Points earned on TradeLens have <strong className="text-text-primary">no monetary value</strong> and
+                            Points earned on TraderLense have <strong className="text-text-primary">no monetary value</strong> and
                             cannot be exchanged for money. They are used solely to unlock platform features such as AI analysis.
-                            TradeLens reserves the right to modify, suspend, or terminate the points system at any time.
+                            TraderLense reserves the right to modify, suspend, or terminate the points system at any time.
                         </p>
                     </section>
 
@@ -191,7 +191,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                             <span className="text-status-neutral">10.</span> Modifications to Terms
                         </h2>
                         <p className="text-text-secondary leading-relaxed">
-                            TradeLens reserves the right to modify these Terms and Conditions at any time. Continued use of
+                            TraderLense reserves the right to modify these Terms and Conditions at any time. Continued use of
                             the platform after changes constitutes acceptance of the modified terms.
                         </p>
                     </section>
@@ -213,7 +213,7 @@ export const TermsAndConditions: React.FC<TermsProps> = ({ onBack }) => {
                     <div className="flex items-start gap-3">
                         <Shield className="text-status-neutral flex-shrink-0 mt-1" size={20} />
                         <p className="text-text-secondary text-sm leading-relaxed">
-                            By using TradeLens, you acknowledge that you have read, understood, and agree to these Terms
+                            By using TraderLense, you acknowledge that you have read, understood, and agree to these Terms
                             and Conditions. You confirm that you will use the platform for educational purposes and accept
                             full responsibility for your trading decisions.
                         </p>
