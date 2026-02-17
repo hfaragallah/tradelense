@@ -52,12 +52,15 @@ export const Layout: React.FC<LayoutProps> = ({
         active={activeView === 'shadow'}
         onClick={() => handleNavClick('shadow')}
       />
-      <NavItem
-        icon={<Medal size={22} />}
-        label="Rank"
-        active={activeView === 'leaderboard'}
-        onClick={() => handleNavClick('leaderboard')}
-      />
+      <div className="relative">
+        <NavItem
+          icon={<Medal size={22} />}
+          label="Rank"
+          active={false}
+          onClick={() => { }}
+        />
+        <span className="absolute -top-1 -right-1 bg-status-neutral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+      </div>
     </div>
   );
 
@@ -273,10 +276,11 @@ export const Layout: React.FC<LayoutProps> = ({
               <TrendingUp size={20} className="text-status-high" /> Shadow Dashboard
             </button>
             <button
-              onClick={() => handleNavClick('leaderboard')}
-              className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface/50 active:bg-surface text-text-primary font-bold transition-colors"
+              className="flex items-center gap-4 p-4 rounded-xl text-text-muted font-bold cursor-not-allowed opacity-50"
+              disabled
             >
               <Medal size={20} className="text-status-warning" /> Leaderboard
+              <span className="ml-auto bg-status-neutral text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Soon</span>
             </button>
 
             <div className="h-px bg-surface my-2 mx-4"></div>
