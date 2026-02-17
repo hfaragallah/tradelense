@@ -74,9 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({
               className="flex items-center gap-2 cursor-pointer"
               onClick={() => handleNavClick('feed')}
             >
-              <div className="w-8 h-8 bg-status-neutral rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <Activity className="text-white w-5 h-5" />
-              </div>
+              <img src="/logo.svg" alt="TraderLense" className="w-8 h-8" />
               <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TraderLense</span>
             </div>
 

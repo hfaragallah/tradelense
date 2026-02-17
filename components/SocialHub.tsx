@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DiscussionPost, DiscussionTag } from '../types';
-import { MessageSquare, ThumbsUp, MessageCircle, Share2, Pin, Shield, Filter, Plus, Check } from 'lucide-react';
+import { MessageSquare, ThumbsUp, ThumbsDown, MessageCircle, Share2, Pin, Shield, Filter, Plus, Check } from 'lucide-react';
 
 interface SocialHubProps {
    posts: DiscussionPost[];
@@ -104,6 +104,14 @@ export const SocialHub: React.FC<SocialHubProps> = ({ posts, selectedTag, onNewD
                            className={`flex items-center gap-2 transition-colors ${upvotedPosts.has(post.id) ? 'text-status-high' : 'hover:text-status-high'}`}
                         >
                            <ThumbsUp size={16} className={upvotedPosts.has(post.id) ? 'fill-current' : ''} /> {post.upvotes}
+                        </button>
+                        <button
+                           onClick={(e) => {
+                              e.stopPropagation();
+                           }}
+                           className="flex items-center gap-2 transition-colors hover:text-status-risk"
+                        >
+                           <ThumbsDown size={16} />
                         </button>
                         <button className="flex items-center gap-2 hover:text-text-primary transition-colors">
                            <MessageCircle size={16} /> {post.comments?.length || post.commentCount} Comments

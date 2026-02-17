@@ -227,7 +227,8 @@ export async function logout() {
     try {
         return await account.deleteSession('current');
     } catch (error) {
-        throw error;
+        // Silently handle — no active session to delete is fine
+        console.warn('Logout: no active session to delete');
     }
 }
 

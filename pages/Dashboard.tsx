@@ -54,42 +54,9 @@ const LeftSidebar = ({
   // Dynamic Crowd Calculation Helper
   const getDisplayMetrics = () => {
     if (!selectedTrade) return { agree: 0, disagree: 0, wait: 0, totalVotes: 0, score: 0 };
-
-    if (!userVote) {
-      return {
-        ...selectedTrade.crowd,
-        score: selectedTrade.confidenceScore
-      };
-    }
-
-    const newCrowd = { ...selectedTrade.crowd };
-    newCrowd.totalVotes += 1;
-    let voteWeight = 0;
-
-    switch (userVote) {
-      case ValidationType.AGREE:
-        newCrowd.agree += 1;
-        voteWeight = 100;
-        break;
-      case ValidationType.DISAGREE:
-        newCrowd.disagree += 1;
-        voteWeight = 0;
-        break;
-      case ValidationType.WAIT:
-        newCrowd.wait += 1;
-        voteWeight = 50;
-        break;
-      case ValidationType.OVEREXTENDED:
-        newCrowd.disagree += 1; // Visual mapping
-        voteWeight = 20;
-        break;
-    }
-
-    // Weighted Average Calculation
-    const rawNewScore = ((selectedTrade.confidenceScore * selectedTrade.crowd.totalVotes) + voteWeight) / newCrowd.totalVotes;
     return {
-      ...newCrowd,
-      score: Math.round(rawNewScore)
+      ...selectedTrade.crowd,
+      score: selectedTrade.confidenceScore
     };
   };
 
@@ -554,7 +521,8 @@ const Dashboard: React.FC = () => {
             setUserProfile(existingProfile as unknown as TraderProfile); // Type casting for now, ideally map fields
           } else {
             // Create New Profile (Preserve Mock Logic)
-            const isHeshamAdmin = user.email.toLowerCase() === 'heshamfaragallah@gmail.com';
+            const ADMIN_EMAILS = ['heshamfaragallah@gmail.com', 'hesham-farag@outlook.com'];
+            const isHeshamAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
             const newProfile: TraderProfile = {
               id: user.$id,
               name: user.name || (isHeshamAdmin ? 'Hesham Admin' : 'New Trader'),
@@ -629,7 +597,11 @@ const Dashboard: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch (e) {
+      // ignore API errors — still clear local state
+    }
     setIsGuest(true);
     setUserProfile(null);
     setCurrentView('feed');
@@ -698,7 +670,57 @@ const Dashboard: React.FC = () => {
 
   const handleVote = (type: ValidationType) => {
     requireAuth(() => {
-      setUserVote(prev => prev === type ? null : type);
+      if (!selectedTrade) return;
+
+      const prevVote = userVote;
+      const newVote = prevVote === type ? null : type; // toggle off if same
+
+      // Helper to get the crowd key for a vote type
+      const getCrowdKey = (v: ValidationType): 'agree' | 'disagree' | 'wait' => {
+        switch (v) {
+          case ValidationType.AGREE: return 'agree';
+          case ValidationType.DISAGREE: return 'disagree';
+          case ValidationType.WAIT: return 'wait';
+          case ValidationType.OVEREXTENDED: return 'disagree';
+        }
+      };
+
+      const getVoteWeight = (v: ValidationType): number => {
+        switch (v) {
+          case ValidationType.AGREE: return 100;
+          case ValidationType.DISAGREE: return 0;
+          case ValidationType.WAIT: return 50;
+          case ValidationType.OVEREXTENDED: return 20;
+        }
+      };
+
+      // Clone current crowd data
+      const newCrowd = { ...selectedTrade.crowd };
+      let totalWeight = selectedTrade.confidenceScore * selectedTrade.crowd.totalVotes;
+
+      // Remove previous vote if switching
+      if (prevVote) {
+        const prevKey = getCrowdKey(prevVote);
+        newCrowd[prevKey] = Math.max(0, newCrowd[prevKey] - 1);
+        newCrowd.totalVotes = Math.max(0, newCrowd.totalVotes - 1);
+        totalWeight -= getVoteWeight(prevVote);
+      }
+
+      // Add new vote (if not toggling off)
+      if (newVote) {
+        const newKey = getCrowdKey(newVote);
+        newCrowd[newKey] += 1;
+        newCrowd.totalVotes += 1;
+        totalWeight += getVoteWeight(newVote);
+      }
+
+      const newScore = newCrowd.totalVotes > 0 ? Math.round(totalWeight / newCrowd.totalVotes) : 0;
+
+      // Update trade in state
+      const updatedTrade = { ...selectedTrade, crowd: newCrowd, confidenceScore: newScore };
+      setSelectedTrade(updatedTrade);
+      setTrades(prev => prev.map(t => t.id === selectedTrade.id ? updatedTrade : t));
+      setUserVote(newVote);
     });
   };
 

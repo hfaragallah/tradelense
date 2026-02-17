@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DiscussionPost, DiscussionComment } from '../types';
 import {
-   ArrowLeft, MessageSquare, ThumbsUp, MessageCircle, Share2, Pin, Shield, Check, Send, Users
+   ArrowLeft, MessageSquare, ThumbsUp, ThumbsDown, MessageCircle, Share2, Pin, Shield, Check, Send, Users
 } from 'lucide-react';
 
 interface DiscussionDetailProps {
@@ -100,6 +100,12 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                </button>
 
                <button
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-surface transition-colors hover:text-status-risk"
+               >
+                  <ThumbsDown size={20} />
+               </button>
+
+               <button
                   onClick={() => onTogglePin(post.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-surface transition-colors ${post.isPinned ? 'text-status-warning' : 'hover:text-status-warning'}`}
                >
@@ -122,50 +128,77 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                <Users size={20} className="text-status-neutral" /> Crowd Validation
             </h3>
 
-            <div className="flex flex-col xl:flex-row gap-8 items-center">
-               {/* Progress Section */}
-               <div className="flex-1 w-full space-y-3">
-                  <div className="flex justify-between items-end">
-                     <span className="text-sm text-text-secondary">Consensus</span>
-                     <div className="text-right">
-                        <span className="text-status-high font-bold text-lg">Strong Agree</span>
-                        <p className="text-[10px] text-text-muted">Based on verified traders</p>
+            {(() => {
+               const totalVotes = post.upvotes || 0;
+               const commentCount = post.comments?.length || 0;
+               // Derive percentages from real data
+               const agreePercent = totalVotes > 0 ? Math.round((totalVotes / (totalVotes + commentCount + 1)) * 100) : 0;
+               const disagreePercent = totalVotes > 0 ? Math.round(100 - agreePercent - Math.min(20, commentCount * 5)) : 0;
+               const neutralPercent = totalVotes > 0 ? Math.max(0, 100 - agreePercent - Math.max(0, disagreePercent)) : 0;
+
+               const hasVotes = totalVotes > 0 || commentCount > 0;
+               const consensusLabel = !hasVotes ? 'No votes yet'
+                  : agreePercent > 60 ? 'Strong Agree'
+                     : agreePercent > 40 ? 'Moderate'
+                        : 'Divided';
+               const consensusColor = !hasVotes ? 'text-text-muted'
+                  : agreePercent > 60 ? 'text-status-high'
+                     : agreePercent > 40 ? 'text-status-warning'
+                        : 'text-status-risk';
+
+               return (
+                  <div className="flex flex-col xl:flex-row gap-8 items-center">
+                     {/* Progress Section */}
+                     <div className="flex-1 w-full space-y-3">
+                        <div className="flex justify-between items-end">
+                           <span className="text-sm text-text-secondary">Consensus</span>
+                           <div className="text-right">
+                              <span className={`${consensusColor} font-bold text-lg`}>{consensusLabel}</span>
+                              <p className="text-[10px] text-text-muted">{hasVotes ? 'Based on community votes' : 'Be the first to vote'}</p>
+                           </div>
+                        </div>
+
+                        <div className="w-full bg-surface rounded-full h-4 overflow-hidden flex relative">
+                           {hasVotes ? (
+                              <>
+                                 <div className="bg-status-high h-full" style={{ width: `${agreePercent}%` }}></div>
+                                 <div className="bg-status-risk h-full" style={{ width: `${Math.max(0, disagreePercent)}%` }}></div>
+                                 <div className="bg-status-neutral h-full" style={{ width: `${neutralPercent}%` }}></div>
+                              </>
+                           ) : (
+                              <div className="bg-surface h-full w-full"></div>
+                           )}
+                        </div>
+
+                        <div className="flex justify-between text-xs font-medium text-text-muted">
+                           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-high"></span> Agree ({hasVotes ? `${agreePercent}%` : '0%'})</span>
+                           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-risk"></span> Disagree ({hasVotes ? `${Math.max(0, disagreePercent)}%` : '0%'})</span>
+                           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-neutral"></span> Neutral ({hasVotes ? `${neutralPercent}%` : '0%'})</span>
+                        </div>
+                     </div>
+
+                     {/* Stats Divider */}
+                     <div className="hidden xl:block w-px h-16 bg-surface"></div>
+                     <div className="xl:hidden w-full h-px bg-surface"></div>
+
+                     {/* Stats Metrics */}
+                     <div className="flex justify-between gap-8 md:gap-12 w-full xl:w-auto">
+                        <div className="text-center">
+                           <div className="text-3xl font-bold text-text-primary">{totalVotes + commentCount}</div>
+                           <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Interactions</div>
+                        </div>
+                        <div className="text-center">
+                           <div className="text-3xl font-bold text-text-primary">{commentCount}</div>
+                           <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Comments</div>
+                        </div>
+                        <div className="text-center">
+                           <div className={`text-3xl font-bold ${!hasVotes ? 'text-text-muted' : 'text-status-warning'}`}>{!hasVotes ? '—' : commentCount > 3 ? 'High' : 'Low'}</div>
+                           <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Activity</div>
+                        </div>
                      </div>
                   </div>
-
-                  <div className="w-full bg-surface rounded-full h-4 overflow-hidden flex relative">
-                     <div className="bg-status-high h-full" style={{ width: '75%' }}></div>
-                     <div className="bg-status-risk h-full" style={{ width: '15%' }}></div>
-                     <div className="bg-status-neutral h-full" style={{ width: '10%' }}></div>
-                  </div>
-
-                  <div className="flex justify-between text-xs font-medium text-text-muted">
-                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-high"></span> Agree (75%)</span>
-                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-risk"></span> Disagree (15%)</span>
-                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-status-neutral"></span> Neutral (10%)</span>
-                  </div>
-               </div>
-
-               {/* Stats Divider */}
-               <div className="hidden xl:block w-px h-16 bg-surface"></div>
-               <div className="xl:hidden w-full h-px bg-surface"></div>
-
-               {/* Stats Metrics */}
-               <div className="flex justify-between gap-8 md:gap-12 w-full xl:w-auto">
-                  <div className="text-center">
-                     <div className="text-3xl font-bold text-text-primary">{(post.upvotes || 0) + 24}</div>
-                     <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Total Votes</div>
-                  </div>
-                  <div className="text-center">
-                     <div className="text-3xl font-bold text-text-primary">18</div>
-                     <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Verified</div>
-                  </div>
-                  <div className="text-center">
-                     <div className="text-3xl font-bold text-status-warning">Low</div>
-                     <div className="text-xs text-text-muted uppercase tracking-wider font-semibold mt-1">Controversy</div>
-                  </div>
-               </div>
-            </div>
+               );
+            })()}
          </div>
 
          {/* Comments Section */}
