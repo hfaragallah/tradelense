@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import Dashboard from './pages/Dashboard';
-import LandingPage from './pages/LandingPage';
 import AIToolsPage from './pages/AIToolsPage';
 import InsightsPage from './pages/InsightsPage';
 import BlogPage from './pages/BlogPage';
@@ -14,12 +13,12 @@ const App: React.FC = () => {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/app" element={<Dashboard />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/app" element={<Navigate to="/" replace />} />
             <Route path="/ai-tools" element={<AIToolsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/blog" element={<BlogPage />} />
-            {/* Catch all - redirect to Landing Page for now, or 404 */}
+            {/* Catch all - redirect to Dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
