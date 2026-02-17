@@ -77,7 +77,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <div className="w-8 h-8 bg-status-neutral rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Activity className="text-white w-5 h-5" />
               </div>
-              <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TradeLens</span>
+              <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TraderLense</span>
             </div>
 
             <div className="hidden md:flex items-center bg-surface/50 border border-surface rounded-full px-4 py-1.5 w-64 focus-within:border-status-neutral focus-within:bg-surface transition-all group">

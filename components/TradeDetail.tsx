@@ -4,7 +4,7 @@ import { analyzeTrade } from '../services/geminiService';
 import {
   ArrowLeft, Target, ShieldAlert, BadgeCheck, Eye, Share2, AlertOctagon, Cpu, Loader2, Play, Tag, Activity, ArrowDownRight, ArrowUpRight, Lock, Zap, LogIn, Info, Scale
 } from 'lucide-react';
-import { ResponsiveContainer, ComposedChart, Bar, YAxis, XAxis, Tooltip as RechartsTooltip, CartesianGrid, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Line, YAxis, XAxis, Tooltip as RechartsTooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { Tooltip } from './Tooltip';
 
 interface TradeDetailProps {
@@ -18,60 +18,7 @@ interface TradeDetailProps {
   onOpenAuth: () => void;
 }
 
-// Custom Candle Shape Component
-const Candle = (props: any) => {
-  const { x, y, width, height, payload, yAxis } = props;
 
-  // Defensive check: Ensure we have necessary data and scale function
-  if (!payload || !yAxis || typeof yAxis.scale !== 'function') {
-    return null;
-  }
-
-  const { open, close, high, low } = payload;
-
-  // Guard against missing payload values
-  if (open === undefined || close === undefined || high === undefined || low === undefined) {
-    return null;
-  }
-
-  // Calculate coordinates using the Y-axis scale function
-  const yHigh = yAxis.scale(high);
-  const yLow = yAxis.scale(low);
-  const yOpen = yAxis.scale(open);
-  const yClose = yAxis.scale(close);
-
-  const isUp = close >= open;
-  // Compliant colors: Green #22C55E, Red #EF4444
-  const color = isUp ? '#22C55E' : '#EF4444';
-
-  // Body Dimensions
-  const bodyTop = Math.min(yOpen, yClose);
-  const bodyHeight = Math.max(Math.abs(yOpen - yClose), 2); // Ensure visibility
-  const cx = x + width / 2;
-
-  return (
-    <g className="animate-in fade-in duration-700">
-      {/* Wick */}
-      <line
-        x1={cx} y1={yHigh}
-        x2={cx} y2={yLow}
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-      {/* Body */}
-      <rect
-        x={x}
-        y={bodyTop}
-        width={width}
-        height={bodyHeight}
-        fill={color}
-        stroke="none"
-        rx={1}
-      />
-    </g>
-  );
-};
 
 export const TradeDetail: React.FC<TradeDetailProps> = ({
   trade,
@@ -169,15 +116,22 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
       const high = bodyMax + Math.random() * (volatility * 0.5);
       const low = bodyMin - Math.random() * (volatility * 0.5);
 
-      data.push({
-        i,
-        open: currentOpen,
-        close,
-        high,
-        low
-      });
+      if (!isNaN(currentOpen) && !isNaN(close) && !isNaN(high) && !isNaN(low)) {
+        data.push({
+          i,
+          open: currentOpen,
+          close,
+          high,
+          low
+        });
+      }
 
       currentOpen = close;
+    }
+
+    // fallback if data is empty
+    if (data.length === 0) {
+      return { data: [], domain: [0, 100] };
     }
 
     // Calculate domain padding for Y-Axis
@@ -186,20 +140,13 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
 
     const maxPrice = Math.max(...allHighs);
     const minPrice = Math.min(...allLows);
-    const range = maxPrice - minPrice;
+
+    // Safety check for flat range
+    let range = maxPrice - minPrice;
+    if (range === 0) range = maxPrice * 0.01; // 1% buffer if flat
+    if (range === 0) range = 1; // absolute fallback
 
     const domain = [minPrice - (range * 0.1), maxPrice + (range * 0.1)];
-
-    // Debug logging
-    console.log('📊 Chart Config Generated:', {
-      dataPoints: data.length,
-      firstCandle: data[0],
-      lastCandle: data[data.length - 1],
-      domain,
-      entry,
-      sl,
-      tp
-    });
 
     return { data, domain };
   }, [trade, isLong]);
@@ -349,9 +296,15 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
           </div>
 
           {/* Chart Container */}
-          <div className="flex-1 w-full relative z-10">
+          <div className="flex-1 w-full relative z-10 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartConfig.data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartConfig.data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isLong ? '#22C55E' : '#EF4444'} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={isLong ? '#22C55E' : '#EF4444'} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} strokeOpacity={0.2} />
                 <XAxis dataKey="i" hide />
                 <YAxis
@@ -361,10 +314,10 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   axisLine={false}
                   tickLine={false}
                   width={60}
-                  tickFormatter={(val) => val.toFixed(2)}
+                  tickFormatter={(val: number) => val.toFixed(2)}
                 />
                 <RechartsTooltip
-                  content={({ active, payload: p }) => {
+                  content={({ active, payload: p }: any) => {
                     if (active && p && p.length) {
                       const d = p[0].payload;
                       return (
@@ -390,14 +343,14 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   stroke="#EF4444"
                   strokeDasharray="3 3"
                   strokeWidth={1}
-                  label={{ value: `SL`, position: 'insideRight', fill: '#EF4444', fontSize: 10, fontWeight: 'bold' }}
+                  label={{ value: 'SL', position: 'insideRight', fill: '#EF4444', fontSize: 10, fontWeight: 'bold' }}
                 />
                 <ReferenceLine
                   y={trade.entryRange[0]}
                   stroke="#9AA4B2"
                   strokeDasharray="3 3"
                   strokeWidth={1}
-                  label={{ value: `ENTRY`, position: 'insideRight', fill: '#9AA4B2', fontSize: 10 }}
+                  label={{ value: 'ENTRY', position: 'insideRight', fill: '#9AA4B2', fontSize: 10 }}
                 />
                 {trade.takeProfit.map((tp, i) => (
                   <ReferenceLine
@@ -410,15 +363,20 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   />
                 ))}
 
-                {/* Candlestick Series */}
-                <Bar
+                {/* Price Area with gradient fill */}
+                <Area
+                  type="monotone"
                   dataKey="close"
-                  shape={<Candle />}
-                  barSize={8}
+                  stroke={isLong ? '#22C55E' : '#EF4444'}
+                  strokeWidth={2}
+                  fill="url(#priceGradient)"
                   animationDuration={1500}
-                  isAnimationActive={true}
+                  dot={false}
                 />
-              </ComposedChart>
+                {/* High/Low range as subtle lines */}
+                <Line type="monotone" dataKey="high" stroke="#4B5563" strokeWidth={1} strokeDasharray="2 2" dot={false} activeDot={false} />
+                <Line type="monotone" dataKey="low" stroke="#4B5563" strokeWidth={1} strokeDasharray="2 2" dot={false} activeDot={false} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
@@ -502,15 +460,15 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
             <div className="animate-fade-in space-y-6">
 
               {/* 1. Hero Verdict Section */}
-              <div className={`rounded-xl p-6 border-2 ${getDecisionColor(aiAnalysis.currentStatus.decision)}`}>
+              <div className={`rounded-xl p-6 border-2 ${getDecisionColor(aiAnalysis.currentStatus?.decision || '')}`}>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="text-center md:text-left">
                     <span className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 block">Strategic Decision</span>
-                    <h2 className="text-4xl font-black tracking-tight">{aiAnalysis.currentStatus.decision}</h2>
+                    <h2 className="text-4xl font-black tracking-tight">{aiAnalysis.currentStatus?.decision || 'WAIT'}</h2>
                   </div>
                   <div className="h-12 w-px bg-current opacity-20 hidden md:block"></div>
                   <div className="flex-1">
-                    <p className="text-lg font-medium opacity-90 italic">"{aiAnalysis.currentStatus.keyPrinciple}"</p>
+                    <p className="text-lg font-medium opacity-90 italic">"{aiAnalysis.currentStatus?.keyPrinciple || 'Capital preservation first.'}"</p>
                   </div>
                 </div>
               </div>
@@ -519,11 +477,11 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-surface/30 rounded-xl p-4 border border-surface flex items-center justify-between">
                   <span className="text-text-muted text-sm">Market Position</span>
-                  <span className="font-bold text-text-primary">{aiAnalysis.currentStatus.marketPosition}</span>
+                  <span className="font-bold text-text-primary">{aiAnalysis.currentStatus?.marketPosition || 'Unknown'}</span>
                 </div>
                 <div className="bg-surface/30 rounded-xl p-4 border border-surface flex items-center justify-between">
                   <span className="text-text-muted text-sm">Risk Note</span>
-                  <span className="font-bold text-status-warning">{aiAnalysis.currentStatus.riskNote}</span>
+                  <span className="font-bold text-status-warning">{aiAnalysis.currentStatus?.riskNote || 'N/A'}</span>
                 </div>
               </div>
 
@@ -539,16 +497,16 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   <div className="p-5 flex-1 space-y-4">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Setup</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria.setupName}</div>
+                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria?.setupName || 'N/A'}</div>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Trigger</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria.triggerType}</div>
+                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria?.triggerType || 'N/A'}</div>
                     </div>
                     <div className="bg-surface/50 rounded-lg p-3">
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider mb-2 block">Checklist</span>
                       <ul className="space-y-2">
-                        {aiAnalysis.sellCriteria.checklist.map((item, i) => (
+                        {(aiAnalysis.sellCriteria?.checklist || []).map((item, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
                             <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-risk flex-shrink-0" />
                             {item}
@@ -558,7 +516,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                     </div>
                   </div>
                   <div className="p-3 bg-surface/30 border-t border-surface text-xs text-text-muted">
-                    <span className="font-bold text-status-risk">Outcome:</span> {aiAnalysis.sellCriteria.outcome}
+                    <span className="font-bold text-status-risk">Outcome:</span> {aiAnalysis.sellCriteria?.outcome || 'N/A'}
                   </div>
                 </div>
 
@@ -572,16 +530,16 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   <div className="p-5 flex-1 space-y-4">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Setup</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria.setupName}</div>
+                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria?.setupName || 'N/A'}</div>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Trigger</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria.triggerType}</div>
+                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria?.triggerType || 'N/A'}</div>
                     </div>
                     <div className="bg-surface/50 rounded-lg p-3">
                       <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider mb-2 block">Checklist</span>
                       <ul className="space-y-2">
-                        {aiAnalysis.buyCriteria.checklist.map((item, i) => (
+                        {(aiAnalysis.buyCriteria?.checklist || []).map((item, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
                             <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-high flex-shrink-0" />
                             {item}
@@ -591,7 +549,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                     </div>
                   </div>
                   <div className="p-3 bg-surface/30 border-t border-surface text-xs text-text-muted">
-                    <span className="font-bold text-status-high">Outcome:</span> {aiAnalysis.buyCriteria.outcome}
+                    <span className="font-bold text-status-high">Outcome:</span> {aiAnalysis.buyCriteria?.outcome || 'N/A'}
                   </div>
                 </div>
               </div>
@@ -606,19 +564,19 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                     <div>
                       <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">Stop Loss Analysis</span>
                       <p className="text-sm text-text-secondary border-l-2 border-status-risk pl-3">
-                        {aiAnalysis.riskDiscipline.stopLossComment}
+                        {aiAnalysis.riskDiscipline?.stopLossComment || 'N/A'}
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">R:R Quality</span>
                       <p className="text-sm text-text-secondary border-l-2 border-status-high pl-3">
-                        {aiAnalysis.riskDiscipline.riskRewardQuality}
+                        {aiAnalysis.riskDiscipline?.riskRewardQuality || 'N/A'}
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">Behavioral Check</span>
                       <p className="text-sm text-text-secondary border-l-2 border-status-warning pl-3">
-                        {aiAnalysis.riskDiscipline.behavioralNote}
+                        {aiAnalysis.riskDiscipline?.behavioralNote || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -633,16 +591,16 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                 <div className="space-y-3">
                   <div className="flex items-center gap-4 p-3 bg-surface/30 rounded-lg">
                     <span className="font-mono text-status-neutral font-bold text-xl">01</span>
-                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules.rule1}</p>
+                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules?.rule1 || 'Follow your trading plan.'}</p>
                   </div>
                   <div className="flex items-center gap-4 p-3 bg-surface/30 rounded-lg">
                     <span className="font-mono text-status-neutral font-bold text-xl">02</span>
-                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules.rule2}</p>
+                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules?.rule2 || 'Do not adjust stop loss emotionally.'}</p>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-surface flex justify-between items-center">
                   <span className="text-xs font-bold text-text-muted uppercase">Final Recommendation</span>
-                  <span className="text-lg font-bold text-text-primary">{aiAnalysis.actionRules.recommendation}</span>
+                  <span className="text-lg font-bold text-text-primary">{aiAnalysis.actionRules?.recommendation || 'Proceed with caution.'}</span>
                 </div>
               </div>
 

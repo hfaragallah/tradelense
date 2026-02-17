@@ -9,13 +9,17 @@ interface DiscussionDetailProps {
    onBack: () => void;
    onTogglePin: (id: string) => void;
    onAddComment: (postId: string, content: string) => void;
+   onUpvote: (postId: string) => void;
+   isUpvoted: boolean;
 }
 
 export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
    post,
    onBack,
    onTogglePin,
-   onAddComment
+   onAddComment,
+   onUpvote,
+   isUpvoted
 }) => {
    const [shareCopied, setShareCopied] = useState(false);
    const [newComment, setNewComment] = useState('');
@@ -88,8 +92,11 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             </div>
 
             <div className="flex items-center gap-4 pt-6 border-t border-surface text-text-muted">
-               <button className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-surface hover:text-status-high transition-colors">
-                  <ThumbsUp size={20} /> <span className="font-medium">{post.upvotes}</span>
+               <button
+                  onClick={() => onUpvote(post.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-surface transition-colors ${isUpvoted ? 'text-status-high' : 'hover:text-status-high'}`}
+               >
+                  <ThumbsUp size={20} className={isUpvoted ? 'fill-current' : ''} /> <span className="font-medium">{post.upvotes}</span>
                </button>
 
                <button

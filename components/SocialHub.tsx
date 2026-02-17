@@ -8,9 +8,11 @@ interface SocialHubProps {
    onNewDiscussion: () => void;
    onTogglePin: (id: string) => void;
    onDiscussionClick: (post: DiscussionPost) => void;
+   onUpvote: (postId: string) => void;
+   upvotedPosts: Set<string>;
 }
 
-export const SocialHub: React.FC<SocialHubProps> = ({ posts, selectedTag, onNewDiscussion, onTogglePin, onDiscussionClick }) => {
+export const SocialHub: React.FC<SocialHubProps> = ({ posts, selectedTag, onNewDiscussion, onTogglePin, onDiscussionClick, onUpvote, upvotedPosts }) => {
    const [shareCopiedId, setShareCopiedId] = useState<string | null>(null);
 
    const filteredPosts = posts.filter(post =>
@@ -94,8 +96,14 @@ export const SocialHub: React.FC<SocialHubProps> = ({ posts, selectedTag, onNewD
                      </div>
 
                      <div className="flex items-center gap-6 mt-4 pt-4 border-t border-surface text-text-muted text-sm">
-                        <button className="flex items-center gap-2 hover:text-status-high transition-colors">
-                           <ThumbsUp size={16} /> {post.upvotes}
+                        <button
+                           onClick={(e) => {
+                              e.stopPropagation();
+                              onUpvote(post.id);
+                           }}
+                           className={`flex items-center gap-2 transition-colors ${upvotedPosts.has(post.id) ? 'text-status-high' : 'hover:text-status-high'}`}
+                        >
+                           <ThumbsUp size={16} className={upvotedPosts.has(post.id) ? 'fill-current' : ''} /> {post.upvotes}
                         </button>
                         <button className="flex items-center gap-2 hover:text-text-primary transition-colors">
                            <MessageCircle size={16} /> {post.comments?.length || post.commentCount} Comments

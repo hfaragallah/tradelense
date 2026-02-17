@@ -12,6 +12,7 @@ const getApiKey = (): string | undefined => {
   return key;
 };
 
+
 export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | null> => {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -40,34 +41,40 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
     INSTRUCTIONS:
     Generate a JSON "Trade Confirmation Report". Tone must be calm, professional, and educational.
-
-    1. **Current Status**:
-       - decision: "ENTER" (Only if A+ setup), "WAIT" (If unclear/early), "HIGH RISK" (If extended/emotional).
-       - marketPosition: Where are we? (e.g., "Mid-Range", "Key Resistance").
-       - riskNote: Why might this fail? (e.g., "Buying into resistance", "Stop loss too tight").
-       - keyPrinciple: One short maxim relevant to this specific risk (e.g., "Preserve capital > Chasing yield").
     
-    2. **Sell/Bearish Checklist** (Even if Long, what validates the Bears?):
-       - setupName: Bearish structure name.
-       - triggerType: What triggers a sell?
-       - checklist: 3 specific invalidation signs.
-       - outcome: Result if bears win.
+    You MUST return a JSON object with EXACTLY the following structure. 
+    Every field is required. Do not omit any field.
 
-    3. **Buy/Bullish Checklist** (Even if Short, what validates the Bulls?):
-       - setupName: Bullish structure name.
-       - triggerType: What triggers a buy?
-       - checklist: 3 specific confirmation signs.
-       - outcome: Result if bulls win.
-
-    4. **Risk & Discipline Notes**:
-       - stopLossComment: Critique the SL placement (Technical/Arbitrary?).
-       - riskRewardQuality: Comment on the R:R ratio (Is it worth the risk?).
-       - behavioralNote: Detect potential FOMO or emotion in the rationale.
-
-    5. **Action Protocol**:
-       - rule1: Conditional rule (If X -> Y).
-       - rule2: Secondary rule.
-       - recommendation: Final conservative summary.
+    {
+      "currentStatus": {
+        "decision": "ENTER" | "WAIT" | "HIGH RISK",
+        "marketPosition": "string describing where we are",
+        "riskNote": "string describing why this might fail",
+        "keyPrinciple": "one short maxim"
+      },
+      "sellCriteria": {
+        "setupName": "string",
+        "triggerType": "string",
+        "checklist": ["string", "string", "string"],
+        "outcome": "string"
+      },
+      "buyCriteria": {
+        "setupName": "string",
+        "triggerType": "string",
+        "checklist": ["string", "string", "string"],
+        "outcome": "string"
+      },
+      "riskDiscipline": {
+        "stopLossComment": "string",
+        "riskRewardQuality": "string",
+        "behavioralNote": "string"
+      },
+      "actionRules": {
+        "rule1": "string",
+        "rule2": "string",
+        "recommendation": "string"
+      }
+    }
   `;
 
   try {
@@ -80,31 +87,49 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
     const response = await model.generateContent(prompt);
     const text = response.response.text();
-    if (!text) {
-      console.error("AI returned empty text");
-      return null;
-    }
 
     // Clean up markdown block if present
     const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
 
-    const result = JSON.parse(cleanText) as AIAnalysisResult;
+    const parsed = JSON.parse(cleanText);
 
-    // Attach usage metadata if available
-    if (response.response.usageMetadata) {
-      result.usageMetadata = {
-        promptTokenCount: response.response.usageMetadata.promptTokenCount || 0,
-        candidatesTokenCount: response.response.usageMetadata.candidatesTokenCount || 0,
-        totalTokenCount: response.response.usageMetadata.totalTokenCount || 0
-      };
-    }
+    // Normalize the response to ensure all fields exist
+    const result: AIAnalysisResult = {
+      currentStatus: {
+        decision: parsed?.currentStatus?.decision || 'WAIT',
+        marketPosition: parsed?.currentStatus?.marketPosition || 'Unknown',
+        riskNote: parsed?.currentStatus?.riskNote || 'Unable to assess risk.',
+        keyPrinciple: parsed?.currentStatus?.keyPrinciple || 'Capital preservation first.',
+      },
+      sellCriteria: {
+        setupName: parsed?.sellCriteria?.setupName || 'Bearish Scenario',
+        triggerType: parsed?.sellCriteria?.triggerType || 'Price Action',
+        checklist: Array.isArray(parsed?.sellCriteria?.checklist) ? parsed.sellCriteria.checklist : ['Monitor for breakdown', 'Watch for volume decline', 'Check support levels'],
+        outcome: parsed?.sellCriteria?.outcome || 'Exit position',
+      },
+      buyCriteria: {
+        setupName: parsed?.buyCriteria?.setupName || 'Bullish Scenario',
+        triggerType: parsed?.buyCriteria?.triggerType || 'Price Action',
+        checklist: Array.isArray(parsed?.buyCriteria?.checklist) ? parsed.buyCriteria.checklist : ['Wait for confirmation', 'Check momentum', 'Verify volume'],
+        outcome: parsed?.buyCriteria?.outcome || 'Enter position',
+      },
+      riskDiscipline: {
+        stopLossComment: parsed?.riskDiscipline?.stopLossComment || 'Review stop loss placement.',
+        riskRewardQuality: parsed?.riskDiscipline?.riskRewardQuality || 'Evaluate risk-reward ratio.',
+        behavioralNote: parsed?.riskDiscipline?.behavioralNote || 'Stay disciplined.',
+      },
+      actionRules: {
+        rule1: parsed?.actionRules?.rule1 || 'Follow your trading plan.',
+        rule2: parsed?.actionRules?.rule2 || 'Do not adjust stop loss emotionally.',
+        recommendation: parsed?.actionRules?.recommendation || 'Proceed with caution.',
+      },
+    };
 
+    console.log("AI Analysis normalized result:", result);
     return result;
 
   } catch (error: any) {
     console.error("Analysis service interruption:", error);
-    // Return a specific error object or string if possible, but currently returns null
-    // You might want to throw or return an error object in the future
     return null;
   }
 };

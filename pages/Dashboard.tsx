@@ -108,16 +108,22 @@ const LeftSidebar = ({
           <div className="mb-6">
             <div className="flex justify-between text-xs text-text-muted mb-2">
               <span>Confidence</span>
-              <span className={`font-bold ${metrics.score >= 75 ? 'text-status-high' : metrics.score >= 50 ? 'text-status-warning' : 'text-status-risk'}`}>
-                {metrics.score}%
+              <span className={`font-bold ${metrics.totalVotes === 0 ? 'text-text-muted' : metrics.score >= 75 ? 'text-status-high' : metrics.score >= 50 ? 'text-status-warning' : 'text-status-risk'}`}>
+                {metrics.totalVotes === 0 ? 'No votes yet' : `${metrics.score}%`}
               </span>
             </div>
 
             {/* Bars */}
             <div className="w-full bg-surface rounded-full h-2 overflow-hidden flex mb-2">
-              <div className="bg-status-high h-full transition-all duration-500" style={{ width: `${(metrics.agree / metrics.totalVotes) * 100}%` }}></div>
-              <div className="bg-status-risk h-full transition-all duration-500" style={{ width: `${(metrics.disagree / metrics.totalVotes) * 100}%` }}></div>
-              <div className="bg-status-neutral h-full transition-all duration-500" style={{ width: `${(metrics.wait / metrics.totalVotes) * 100}%` }}></div>
+              {metrics.totalVotes > 0 ? (
+                <>
+                  <div className="bg-status-high h-full transition-all duration-500" style={{ width: `${(metrics.agree / metrics.totalVotes) * 100}%` }}></div>
+                  <div className="bg-status-risk h-full transition-all duration-500" style={{ width: `${(metrics.disagree / metrics.totalVotes) * 100}%` }}></div>
+                  <div className="bg-status-neutral h-full transition-all duration-500" style={{ width: `${(metrics.wait / metrics.totalVotes) * 100}%` }}></div>
+                </>
+              ) : (
+                <div className="bg-surface h-full w-full"></div>
+              )}
             </div>
 
             <div className="flex justify-between text-[10px] text-text-muted mt-2">
@@ -470,7 +476,7 @@ const RightSidebar = ({
         <a href="#" className="hover:underline">Guidelines</a>
         <a href="#" className="hover:underline">Privacy & Terms</a>
         <a href="#" className="hover:underline">Help Center</a>
-        <span>TradeLens © 2024</span>
+        <span>TraderLense © 2024</span>
       </div>
     </div>
   );
@@ -585,7 +591,7 @@ const Dashboard: React.FC = () => {
                 title: isHeshamAdmin ? 'Welcome Super Admin' : 'Welcome Bonus!',
                 message: isHeshamAdmin
                   ? 'You have full administrative access to the platform.'
-                  : 'You have received 500 points for joining TradeLens. Use them to unlock AI insights.',
+                  : 'You have received 500 points for joining TraderLense. Use them to unlock AI insights.',
                 timestamp: new Date().toISOString(),
                 isRead: false
               };
@@ -738,7 +744,7 @@ const Dashboard: React.FC = () => {
         ...tradeData,
         id: `t${Date.now()}`,
         timestamp: new Date().toISOString(),
-        confidenceScore: Math.floor(Math.random() * (95 - 60) + 60),
+        confidenceScore: 0,
         crowd: {
           agree: 0,
           disagree: 0,
@@ -774,6 +780,32 @@ const Dashboard: React.FC = () => {
       setDiscussions(updateDiscussions);
       if (selectedDiscussion?.id === id) {
         setSelectedDiscussion(prev => prev ? { ...prev, isPinned: !prev.isPinned } : null);
+      }
+    });
+  };
+
+  const [upvotedPosts, setUpvotedPosts] = useState<Set<string>>(new Set());
+
+  const handleUpvote = (postId: string) => {
+    requireAuth(() => {
+      const alreadyUpvoted = upvotedPosts.has(postId);
+      const delta = alreadyUpvoted ? -1 : 1;
+
+      setUpvotedPosts(prev => {
+        const next = new Set(prev);
+        if (alreadyUpvoted) next.delete(postId);
+        else next.add(postId);
+        return next;
+      });
+
+      setDiscussions(prev => prev.map(post =>
+        post.id === postId ? { ...post, upvotes: (post.upvotes || 0) + delta } : post
+      ));
+
+      if (selectedDiscussion?.id === postId) {
+        setSelectedDiscussion(prev =>
+          prev ? { ...prev, upvotes: (prev.upvotes || 0) + delta } : null
+        );
       }
     });
   };
@@ -866,6 +898,8 @@ const Dashboard: React.FC = () => {
             onBack={() => setCurrentView('social')}
             onTogglePin={handleTogglePin}
             onAddComment={handleAddComment}
+            onUpvote={handleUpvote}
+            isUpvoted={upvotedPosts.has(selectedDiscussion.id)}
           />
         ) : <div>Discussion not found</div>;
 
@@ -895,6 +929,8 @@ const Dashboard: React.FC = () => {
           onNewDiscussion={() => requireAuth(() => setIsDiscussionModalOpen(true))}
           onTogglePin={handleTogglePin}
           onDiscussionClick={handleDiscussionClick}
+          onUpvote={handleUpvote}
+          upvotedPosts={upvotedPosts}
         />;
 
       case 'notifications':
