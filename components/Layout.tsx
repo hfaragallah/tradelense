@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, TrendingUp, Users, Activity, ShieldCheck, Medal, MessageSquare, Search, Bell, Menu, X, LogOut, User, Settings, Plus, Zap, LogIn } from 'lucide-react';
-import { TraderProfile } from '../types';
+import { Trade, TraderProfile } from '../types';
+import { SearchPanel } from './SearchPanel';
 
 interface LayoutProps {
   children: React.ReactNode;
   activeView: string;
   onNavigate: (view: string) => void;
   unreadCount?: number;
-  userProfile: TraderProfile | null; // Null indicates guest
+  userProfile: TraderProfile | null;
   isGuest: boolean;
   onOpenPremium: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
+  trades: Trade[];
+  onSearchSelect: (trade: Trade) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -23,9 +26,25 @@ export const Layout: React.FC<LayoutProps> = ({
   isGuest,
   onOpenPremium,
   onOpenAuth,
-  onLogout
+  onLogout,
+  trades,
+  onSearchSelect
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global keyboard shortcut: Cmd/Ctrl+K or / to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+      if (e.key === 'Escape') setIsSearchOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const handleNavClick = (view: string) => {
     onNavigate(view);
@@ -81,14 +100,16 @@ export const Layout: React.FC<LayoutProps> = ({
               <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TraderLense</span>
             </div>
 
-            <div className="hidden md:flex items-center bg-surface/50 border border-surface rounded-full px-4 py-1.5 w-64 focus-within:border-status-neutral focus-within:bg-surface transition-all group">
-              <Search size={16} className="text-text-muted mr-2 group-focus-within:text-text-primary transition-colors" />
-              <input
-                type="text"
-                placeholder="Search trades, assets..."
-                className="bg-transparent border-none outline-none text-sm text-text-primary w-full placeholder:text-text-muted"
-              />
-            </div>
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="hidden md:flex items-center bg-surface/50 border border-surface rounded-full px-4 py-1.5 w-64 hover:border-status-neutral hover:bg-surface transition-all group cursor-text text-left"
+            >
+              <Search size={16} className="text-text-muted mr-2 group-hover:text-text-primary transition-colors" />
+              <span className="text-sm text-text-muted w-full">Search trades, assets...</span>
+              <kbd className="hidden lg:flex items-center gap-0.5 text-[10px] text-text-muted/60 font-mono bg-surface border border-surface/50 px-1.5 py-0.5 rounded ml-2">
+                ⌘K
+              </kbd>
+            </button>
           </div>
 
           {/* Desktop Nav */}
@@ -327,6 +348,15 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {/* Search Panel Overlay */}
+      {isSearchOpen && (
+        <SearchPanel
+          trades={trades}
+          onSelectTrade={onSearchSelect}
+          onClose={() => setIsSearchOpen(false)}
+        />
       )}
 
       {/* Main Content Area - Centered Container */}

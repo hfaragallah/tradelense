@@ -790,6 +790,8 @@ const Dashboard: React.FC = () => {
         comments: []
       };
       setDiscussions([newPost, ...discussions]);
+      // Auto-switch filter to the new post's tag so the user sees it immediately
+      setSocialFilter(newPost.tag);
     });
   };
 
@@ -1161,12 +1163,17 @@ const Dashboard: React.FC = () => {
         onOpenPremium={() => setIsPremiumModalOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        trades={trades}
+        onSearchSelect={(trade) => {
+          setSelectedTrade(trade);
+          setCurrentView('detail');
+        }}
       >
         {/* 3-Column Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
           {/* Left Column - Navigation & Identity (Hidden on Mobile) */}
-          {!isFullPage && (
+          {!isFullPage && currentView !== 'trust' && (
             <aside className="hidden md:block md:col-span-3">
               <LeftSidebar
                 profile={userProfile}
@@ -1185,7 +1192,12 @@ const Dashboard: React.FC = () => {
           )}
 
           {/* Center Column - Main Content */}
-          <main className={`col-span-1 min-h-[80vh] ${isFullPage ? 'md:col-span-12' : 'md:col-span-9 lg:col-span-6'}`}>
+          <main className={`col-span-1 min-h-[80vh] ${isFullPage
+            ? 'md:col-span-12'
+            : currentView === 'trust'
+              ? 'md:col-span-9'
+              : 'md:col-span-9 lg:col-span-6'
+            }`}>
             {renderContent()}
           </main>
 
