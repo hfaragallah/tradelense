@@ -13,6 +13,13 @@ client
     .setEndpoint(endpoint || 'https://cloud.appwrite.io/v1')
     .setProject(projectId || '');
 
+// Verify Appwrite backend connection on startup
+client.ping().then(() => {
+    console.log('✅ Appwrite connection verified');
+}).catch((err) => {
+    console.warn('⚠️ Appwrite ping failed:', err.message);
+});
+
 export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
