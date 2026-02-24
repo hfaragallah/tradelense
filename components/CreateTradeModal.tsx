@@ -232,10 +232,13 @@ export const CreateTradeModal: React.FC<CreateTradeModalProps> = ({ isOpen, onCl
                 value={market}
                 onChange={e => setMarket(e.target.value)}
               >
-                <option>Crypto</option>
-                <option>Forex</option>
-                <option>Stocks</option>
-                <option>Commodities</option>
+                <option value="Crypto">Cryptocurrencies</option>
+                <option value="Forex">Forex</option>
+                <option value="Shares">Shares (Stocks)</option>
+                <option value="Indices">Indices</option>
+                <option value="Metals">Metals</option>
+                <option value="Energies">Energies</option>
+                <option value="Commodities">Commodities</option>
               </select>
             </div>
           </div>

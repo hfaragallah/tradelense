@@ -8,7 +8,7 @@ interface SearchPanelProps {
     onClose: () => void;
 }
 
-const MARKET_OPTIONS = ['All', 'Crypto', 'Forex', 'Stocks', 'Commodities'];
+const MARKET_OPTIONS = ['All', 'Crypto', 'Forex', 'Shares', 'Indices', 'Metals', 'Energies', 'Commodities'];
 const TYPE_OPTIONS = ['All', 'LONG', 'SHORT'];
 const HORIZON_OPTIONS = ['All', ...Object.values(TimeHorizon)];
 
@@ -180,8 +180,8 @@ function FilterGroup({
                         key={opt}
                         onClick={() => onChange(opt)}
                         className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${value === opt
-                                ? 'bg-status-neutral text-white border-status-neutral'
-                                : 'bg-surface/50 text-text-secondary border-surface hover:border-text-muted/40'
+                            ? 'bg-status-neutral text-white border-status-neutral'
+                            : 'bg-surface/50 text-text-secondary border-surface hover:border-text-muted/40'
                             }`}
                     >
                         {opt}
