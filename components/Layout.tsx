@@ -78,7 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({
           active={false}
           onClick={() => { }}
         />
-        <span className="absolute -top-1 -right-1 bg-status-neutral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+        <span className="absolute -top-3 -right-1 bg-status-neutral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">Soon</span>
       </div>
     </div>
   );

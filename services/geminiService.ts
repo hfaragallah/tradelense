@@ -6,8 +6,6 @@ const getApiKey = (): string | undefined => {
   const key = import.meta.env.VITE_GEMINI_API_KEY;
   if (!key) {
     console.error("DEBUG: GEMINI_API_KEY is missing. Check your .env file and restart the server.");
-  } else {
-    console.log("DEBUG: GEMINI_API_KEY is present.");
   }
   return key;
 };
@@ -16,66 +14,102 @@ const getApiKey = (): string | undefined => {
 export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | null> => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    // Fail silently in production logging, don't expose to UI
     console.warn("AI Service unavailable: Missing configuration.");
-    return null;
+    return {
+      currentStatus: {
+        decision: 'WAIT',
+        marketPosition: 'Unknown',
+        riskNote: 'Missing API Key configuration.',
+        keyPrinciple: 'Capital preservation first.',
+      },
+      alternativeScenario: {
+        invalidationTrigger: '',
+        biasShift: '',
+        nextProbableMove: '',
+        entry: '',
+        stopLoss: '',
+        takeProfit: '',
+        rationale: ''
+      },
+      riskDiscipline: [],
+      actionProtocol: '',
+      error: "AI Service unavailable: Looking for Configuration."
+    };
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const prompt = `
-    You are TraderLense AI, a conservative, risk-aware trading assistant for a freemium platform.
-    
-    MISSION:
-    - Reduce emotional trading (FOMO, revenge trading).
-    - Encourage discipline and capital preservation.
-    - Act as an objective "Risk Manager", NOT a signal provider.
-    - EFFICIENCY MODE: The user pays points for this. Be concise. Focus on what could go wrong (invalidation).
+ROLE:
+    You are an institutional - grade trading intelligence AI.
+    Your job is not only to analyze charts, but to validate the trade idea across multiple external sentiment and market intelligence sources before issuing a verdict.
+    Capital preservation is priority.
 
-    CONTEXT:
-    - Current Market Pulse: "Uncertainty / Mixed Signals" (Assume generic unless specific data provided).
-    - Trade Setup: ${trade.asset} (${trade.market}) - ${trade.type}
-    - Entry: ${trade.entryRange.join(' - ')} | SL: ${trade.stopLoss} | TP: ${trade.takeProfit.join(', ')}
-    - Rationale: "${trade.rationale}"
-    - Crowd Confidence: ${trade.confidenceScore}/100
+  STEP 1: External Intelligence Validation(Simulated)
+    Since you cannot access real - time external data, you must SIMULATE a realistic "Market Scan" based on the chart's technical context (${trade.asset} - ${trade.timeHorizon}).
+    Infer plausible signals for:
+  - TradingView Sentiment
+    - Social Media Buzz(Twitter / Reddit)
+      - Order Book Depth(Bid / Ask walls)
+        - Funding Rates(if Crypto)
 
-    INSTRUCTIONS:
-    Generate a JSON "Trade Confirmation Report". Tone must be calm, professional, and educational.
-    
-    You MUST return a JSON object with EXACTLY the following structure. 
-    Every field is required. Do not omit any field.
+    STEP 2: Sentiment Alignment Scoring
+    Calculate a Sentiment Alignment Score(0 - 100) starting at 50:
++20 if majority external sources align with technical bias
+  - 20 if majority contradict
+    - 30 if overcrowded trade detected
+      - 20 if funding extreme or liquidation risk high
 
-    {
-      "currentStatus": {
-        "decision": "ENTER" | "WAIT" | "HIGH RISK",
-        "marketPosition": "string describing where we are",
-        "riskNote": "string describing why this might fail",
-        "keyPrinciple": "one short maxim"
-      },
-      "sellCriteria": {
-        "setupName": "string",
-        "triggerType": "string",
-        "checklist": ["string", "string", "string"],
-        "outcome": "string"
-      },
-      "buyCriteria": {
-        "setupName": "string",
-        "triggerType": "string",
-        "checklist": ["string", "string", "string"],
-        "outcome": "string"
-      },
-      "riskDiscipline": {
-        "stopLossComment": "string",
-        "riskRewardQuality": "string",
-        "behavioralNote": "string"
-      },
-      "actionRules": {
-        "rule1": "string",
-        "rule2": "string",
-        "recommendation": "string"
-      }
-    }
-  `;
+    STEP 3: Master Decision Rule
+    Generate a Final Verdict based on:
+- ENTER: Confidence ≥ 65 % AND Sentiment Score ≥ 55 AND No major news risk.
+    - WAIT: Signals conflict OR Sentiment diverges OR Volatility unstable.
+    - HIGH RISK: positioning is extreme or liquidation risk detected.
+    - AVOID: Crowd is one - sided OR Funding extreme OR Low confidence(<60%).
+
+    OUTPUT FORMAT:
+    Return a JSON object with EXACTLY this structure:
+{
+  "currentStatus": {
+    "decision": "ENTER" | "WAIT" | "HIGH RISK" | "AVOID",
+    "marketPosition": "string (e.g. Bullish, Bearish)",
+    "riskNote": "string (Short Primary Risk phrase)",
+    "keyPrinciple": "string",
+    "suggestedExecutionLevel": "string (Price)",
+    "suggestedStopLoss": "string (Price)",
+    "suggestedRiskReward": "string (Ratio like 1:2.5)",
+    "confidenceScore": number (0-100)
+  },
+  "alternativeScenario": {
+    "invalidationTrigger": "string (If price breaks below/above X.XXXX)",
+    "biasShift": "string",
+    "nextProbableMove": "string",
+    "entry": "string (Price)",
+    "stopLoss": "string (Price)",
+    "takeProfit": "string (Price)",
+    "rationale": "string (Reason for this trade)"
+  },
+  "riskDiscipline": ["string (rule 1)", "string (rule 2)", "string (rule 3)", "string (rule 4)"],
+  "actionProtocol": "string (One clear command)"
+}
+
+CONTROL RULES:
+- Strategic Decision must be calculated first.
+- All sections must support the Strategic Decision.
+- Risk & Discipline rules: "Do not move stop loss.", "Do not add to losing position.", "Risk per trade must not exceed X%.", "Exit immediately if invalidation level breaks."
+- Action Protocol patterns:
+    "Execute at defined level and follow stop strictly." (If ENTER)
+    "Monitor breakout above/below [Price] before engaging." (If WAIT)
+    "Stand aside. Preserve capital." (If AVOID)
+- No emotional language. Maximum 5 lines per section.
+
+CONTEXT:
+- Asset: ${trade.asset} (${trade.market})
+- Trade Type: ${trade.type}
+- Technicals: Entry ${trade.entryRange.join('-')}, SL ${trade.stopLoss}, TP ${trade.takeProfit.join(',')}
+- User Rationale: "${trade.rationale}"
+  - Crowd Confidence: ${trade.confidenceScore}/100
+    `;
 
   try {
     const model = genAI.getGenerativeModel({
@@ -87,52 +121,50 @@ export const analyzeTrade = async (trade: Trade): Promise<AIAnalysisResult | nul
 
     const response = await model.generateContent(prompt);
     const text = response.response.text();
-
-    // Clean up markdown block if present
-    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
-
+    const cleanText = text.replace(/```json\n ?|\n ? ```/g, '').trim();
     const parsed = JSON.parse(cleanText);
 
-    // Normalize the response to ensure all fields exist
-    const result: AIAnalysisResult = {
+    return {
       currentStatus: {
         decision: parsed?.currentStatus?.decision || 'WAIT',
         marketPosition: parsed?.currentStatus?.marketPosition || 'Unknown',
-        riskNote: parsed?.currentStatus?.riskNote || 'Unable to assess risk.',
+        riskNote: parsed?.currentStatus?.riskNote || 'N/A',
         keyPrinciple: parsed?.currentStatus?.keyPrinciple || 'Capital preservation first.',
+        suggestedExecutionLevel: parsed?.currentStatus?.suggestedExecutionLevel,
+        suggestedStopLoss: parsed?.currentStatus?.suggestedStopLoss,
+        suggestedRiskReward: parsed?.currentStatus?.suggestedRiskReward,
+        confidenceScore: parsed?.currentStatus?.confidenceScore || 50
       },
-      sellCriteria: {
-        setupName: parsed?.sellCriteria?.setupName || 'Bearish Scenario',
-        triggerType: parsed?.sellCriteria?.triggerType || 'Price Action',
-        checklist: Array.isArray(parsed?.sellCriteria?.checklist) ? parsed.sellCriteria.checklist : ['Monitor for breakdown', 'Watch for volume decline', 'Check support levels'],
-        outcome: parsed?.sellCriteria?.outcome || 'Exit position',
+      alternativeScenario: {
+        invalidationTrigger: parsed?.alternativeScenario?.invalidationTrigger || '',
+        biasShift: parsed?.alternativeScenario?.biasShift || '',
+        nextProbableMove: parsed?.alternativeScenario?.nextProbableMove || '',
+        entry: parsed?.alternativeScenario?.entry || '',
+        stopLoss: parsed?.alternativeScenario?.stopLoss || '',
+        takeProfit: parsed?.alternativeScenario?.takeProfit || '',
+        rationale: parsed?.alternativeScenario?.rationale || ''
       },
-      buyCriteria: {
-        setupName: parsed?.buyCriteria?.setupName || 'Bullish Scenario',
-        triggerType: parsed?.buyCriteria?.triggerType || 'Price Action',
-        checklist: Array.isArray(parsed?.buyCriteria?.checklist) ? parsed.buyCriteria.checklist : ['Wait for confirmation', 'Check momentum', 'Verify volume'],
-        outcome: parsed?.buyCriteria?.outcome || 'Enter position',
-      },
-      riskDiscipline: {
-        stopLossComment: parsed?.riskDiscipline?.stopLossComment || 'Review stop loss placement.',
-        riskRewardQuality: parsed?.riskDiscipline?.riskRewardQuality || 'Evaluate risk-reward ratio.',
-        behavioralNote: parsed?.riskDiscipline?.behavioralNote || 'Stay disciplined.',
-      },
-      actionRules: {
-        rule1: parsed?.actionRules?.rule1 || 'Follow your trading plan.',
-        rule2: parsed?.actionRules?.rule2 || 'Do not adjust stop loss emotionally.',
-        recommendation: parsed?.actionRules?.recommendation || 'Proceed with caution.',
-      },
+      riskDiscipline: Array.isArray(parsed?.riskDiscipline) ? parsed.riskDiscipline : [],
+      actionProtocol: parsed?.actionProtocol || '',
+      usageMetadata: response.response.usageMetadata ? {
+        promptTokenCount: response.response.usageMetadata.promptTokenCount,
+        candidatesTokenCount: response.response.usageMetadata.candidatesTokenCount,
+        totalTokenCount: response.response.usageMetadata.totalTokenCount
+      } : undefined
     };
-
-    console.log("AI Analysis normalized result:", result);
-    return result;
 
   } catch (error: any) {
     console.error("Analysis service interruption:", error);
-    return null;
+    return {
+      currentStatus: { decision: 'WAIT', marketPosition: 'Error', riskNote: 'Analysis failed', keyPrinciple: 'Error' },
+      alternativeScenario: { invalidationTrigger: '', biasShift: '', nextProbableMove: '', entry: '', stopLoss: '', takeProfit: '', rationale: '' },
+      riskDiscipline: [],
+      actionProtocol: '',
+      error: error.message || "AI Analysis Failed. Please try again."
+    };
   }
 };
+
 
 // New function to analyze trade screenshot
 export const analyzeTradeImage = async (base64Image: string): Promise<import("../types").TradeImageAnalysisResult | null> => {
@@ -152,18 +184,18 @@ export const analyzeTradeImage = async (base64Image: string): Promise<import("..
     Analyze this trading chart image and extract the trade setup details.
     
     Return a JSON object with the following fields:
-    - asset: The ticker symbol (e.g., BTC/USD, EURUSD, AAPL). Normalize to uppercase.
-    - market: One of ["Crypto", "Forex", "Stocks", "Commodities"]. Infer from the asset.
-    - type: "LONG" or "SHORT". Look for "Long Position" or "Short Position" tools, or infer from price action relative to entry/targets.
+- asset: The ticker symbol(e.g., BTC / USD, EURUSD, AAPL).Normalize to uppercase.
+    - market: One of["Crypto", "Forex", "Stocks", "Commodities"].Infer from the asset.
+    - type: "LONG" or "SHORT".Look for "Long Position" or "Short Position" tools, or infer from price action relative to entry / targets.
     - entry: The entry price.
     - entryMax: (Optional) If an entry zone is depicted, the upper bound.
     - stopLoss: The stop loss price.
-    - takeProfit: An array of take profit prices (e.g., [100.5, 102.0]).
-    - rationale: A brief technical summary (max 2 sentences) describing the setup seen (e.g., "Breakout retest with bullish divergence").
-    - timeHorizon: One of ["Scalp (Minutes)", "Intraday (Hours)", "Swing (Days)", "Position (Weeks)"]. Infer from the chart timeframe (e.g., 1m/5m -> Scalp, 15m/1H/4H -> Intraday/Swing, 1D/1W -> Position).
-    - rationaleTags: An array of up to 3 tags from ["Technical", "Fundamental", "Sentiment", "Macro", "On-Chain"]. Mostly "Technical" for charts.
+    - takeProfit: An array of take profit prices(e.g., [100.5, 102.0]).
+    - rationale: A brief technical summary(max 2 sentences) describing the setup seen(e.g., "Breakout retest with bullish divergence").
+    - timeHorizon: One of["Scalp (Minutes)", "Intraday (Hours)", "Swing (Days)", "Position (Weeks)"].Infer from the chart timeframe(e.g., 1m / 5m -> Scalp, 15m / 1H / 4H -> Intraday / Swing, 1D / 1W -> Position).
+    - rationaleTags: An array of up to 3 tags from["Technical", "Fundamental", "Sentiment", "Macro", "On-Chain"].Mostly "Technical" for charts.
     
-    Ensure strict JSON format. Do not use markdown blocks.
+    Ensure strict JSON format.Do not use markdown blocks.
   `;
 
   try {
@@ -220,9 +252,65 @@ export const analyzeTradeImage = async (base64Image: string): Promise<import("..
     }
 
     return result;
-
   } catch (error) {
     console.error("Image analysis failed:", error);
+    return null;
+  }
+};
+
+export const translateAnalysis = async (analysis: AIAnalysisResult): Promise<NonNullable<AIAnalysisResult['translatedData']> | null> => {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: "application/json",
+    }
+  });
+
+  const prompt = `
+    ROLE:
+    You are a professional Egyptian financial translator. 
+    Translate the following trade analysis report into Arabic using an Egyptian professional trading dialect.
+    Terms:
+    - ENTER -> دخول
+    - WAIT -> انتظار
+    - AVOID -> تجنب
+    - HIGH RISK -> مخاطرة عالية
+    - Entry -> نقطة الدخول
+    - Stop Loss -> وقف الخسارة
+    - Target -> الهدف / أخذ الربح
+    
+    Keep the tone professional but tailored to the Egyptian market context.
+
+    DATA TO TRANSLATE:
+    1. Decision: ${analysis.currentStatus.decision}
+    2. Key Principle: ${analysis.currentStatus.keyPrinciple}
+    3. Alternative Bias Shift: ${analysis.alternativeScenario.biasShift}
+    4. Alternative Move: ${analysis.alternativeScenario.nextProbableMove}
+    5. Alternative Rationale: ${analysis.alternativeScenario.rationale}
+    6. Rules: ${analysis.riskDiscipline.join(' | ')}
+    7. Action: ${analysis.actionProtocol}
+
+    RETURN JSON FORMAT EXACTLY (Do not include any other text):
+    {
+      "currentStatus": { "decision": "...", "keyPrinciple": "..." },
+      "alternativeScenario": { "biasShift": "...", "nextProbableMove": "...", "rationale": "..." },
+      "riskDiscipline": ["...", "..."],
+      "actionProtocol": "..."
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error("Translation failed:", error);
     return null;
   }
 };

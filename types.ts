@@ -129,39 +129,47 @@ export interface CampaignJoiner {
 
 export interface AIAnalysisResult {
   currentStatus: {
-    decision: string;
-    marketPosition: string;
-    riskNote: string;
+    decision: 'ENTER' | 'WAIT' | 'HIGH RISK' | 'AVOID';
+    marketPosition: string; // e.g., "Bullish"
+    riskNote: string; // The "Primary Risk" note
     keyPrinciple: string;
+    suggestedExecutionLevel?: string;
+    suggestedStopLoss?: string;
+    suggestedRiskReward?: string;
+    confidenceScore?: number;
   };
-  sellCriteria: {
-    setupName: string;
-    triggerType: string;
-    checklist: string[];
-    outcome: string;
+  alternativeScenario: {
+    invalidationTrigger: string; // "If price breaks below/above X.XXXX"
+    biasShift: string;
+    nextProbableMove: string;
+    entry: string;
+    stopLoss: string;
+    takeProfit: string;
+    rationale: string;
   };
-  buyCriteria: {
-    setupName: string;
-    triggerType: string;
-    checklist: string[];
-    outcome: string;
+  riskDiscipline: string[]; // List of rules
+  actionProtocol: string; // One sentence clear command
+  translatedData?: {
+    currentStatus: {
+      decision: string;
+      keyPrinciple: string;
+    };
+    alternativeScenario: {
+      biasShift: string;
+      nextProbableMove: string;
+      rationale: string;
+    };
+    riskDiscipline: string[];
+    actionProtocol: string;
   };
-  riskDiscipline: {
-    stopLossComment: string;
-    riskRewardQuality: string;
-    behavioralNote: string;
-  };
-  actionRules: {
-    rule1: string;
-    rule2: string;
-    recommendation: string;
-  };
+  error?: string;
   usageMetadata?: {
     promptTokenCount: number;
     candidatesTokenCount: number;
     totalTokenCount: number;
   };
 }
+
 
 export interface MarketPulse {
   sentiment: 'Greed' | 'Bullish' | 'Fear' | 'Bearish' | 'Neutral';

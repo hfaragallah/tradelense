@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Trade, TradeType, AIAnalysisResult } from '../types';
-import { analyzeTrade } from '../services/geminiService';
+import { analyzeTrade, translateAnalysis } from '../services/geminiService';
 import {
-  ArrowLeft, Target, ShieldAlert, BadgeCheck, Eye, Share2, AlertOctagon, Cpu, Loader2, Play, Tag, Activity, ArrowDownRight, ArrowUpRight, Lock, Zap, LogIn, Info, Scale
+  ArrowLeft, Target, ShieldAlert, BadgeCheck, Eye, Share2, AlertOctagon, Cpu, Loader2, Play, Tag, Activity, ArrowDownRight, ArrowUpRight, Lock, Zap, LogIn, Info, Scale, Shield, AlertCircle, AlertTriangle, Languages
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, Line, YAxis, XAxis, Tooltip as RechartsTooltip, CartesianGrid, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Line, YAxis, XAxis, Tooltip as RechartsTooltip, CartesianGrid, ReferenceLine, ComposedChart, Bar, Cell } from 'recharts';
 import { Tooltip } from './Tooltip';
 
 interface TradeDetailProps {
@@ -32,6 +32,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
 }) => {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [errorAi, setErrorAi] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -54,11 +55,40 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
     setErrorAi(null);
     const result = await analyzeTrade(trade);
     if (result) {
-      setAiAnalysis(result);
+      if (result.error) {
+        setErrorAi(result.error);
+        setAiAnalysis(null);
+      } else {
+        setAiAnalysis(result);
+      }
     } else {
-      setErrorAi("Analysis failed. Please check your API Key quota or enable billing in Google Cloud.");
+      setErrorAi("Analysis service unavailable. Please try again later.");
     }
     setLoadingAi(false);
+  };
+
+  const handleTranslate = async () => {
+    if (!aiAnalysis || isTranslating) return;
+
+    setIsTranslating(true);
+    setErrorAi(null); // Clear previous errors
+
+    try {
+      const translatedData = await translateAnalysis(aiAnalysis);
+      if (translatedData) {
+        setAiAnalysis({
+          ...aiAnalysis,
+          translatedData
+        });
+      } else {
+        throw new Error("فشلت الترجمة. حاول مرة أخرى.");
+      }
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      setErrorAi(error.message || "Failed to translate. Please try again.");
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   const handleShare = () => {
@@ -71,9 +101,11 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
   // Helper for status color
   const getDecisionColor = (text: string) => {
     if (!text) return 'text-text-primary bg-surface border-surface';
-    if (text.toUpperCase().includes('WAIT')) return 'text-status-warning bg-status-warning/10 border-status-warning/20';
-    if (text.toUpperCase().includes('ENTER') || text.toUpperCase().includes('BUY') || text.toUpperCase().includes('LONG')) return 'text-status-high bg-status-high/10 border-status-high/20';
-    if (text.toUpperCase().includes('SELL') || text.toUpperCase().includes('SHORT') || text.toUpperCase().includes('HIGH RISK')) return 'text-status-risk bg-status-risk/10 border-status-risk/20';
+    const upper = text.toUpperCase();
+    if (upper === 'AVOID') return 'text-white bg-red-600 border-red-500 shadow-lg shadow-red-900/40 ring-2 ring-red-500/20 font-black';
+    if (upper === 'HIGH RISK' || upper.includes('SELL') || upper.includes('SHORT')) return 'text-status-risk bg-status-risk/10 border-status-risk/20 font-bold';
+    if (upper === 'ENTER' || upper === 'BUY' || upper.includes('LONG')) return 'text-status-high bg-status-high/10 border-status-high/20 font-bold';
+    if (upper.includes('WAIT')) return 'text-status-warning bg-status-warning/10 border-status-warning/20 font-bold';
     return 'text-text-primary bg-surface border-surface';
   };
 
@@ -81,70 +113,50 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
   const isRisky = trade.confidenceScore < 50;
 
   // --- CHART DATA GENERATION (OHLC) ---
-  const chartConfig = useMemo(() => {
-    const entry = (trade.entryRange[0] + trade.entryRange[1]) / 2;
-    const sl = trade.stopLoss;
-    const tp = trade.takeProfit[0];
-
-    // Simulate price action context
+  const chartData = useMemo(() => {
+    // Generate mock OHLC data for the chart
     const data = [];
-    let currentOpen = entry;
+    const points = 30; // Number of candles
+    const volatility = Math.abs(trade.entryRange[0] - trade.stopLoss) * 0.5; // Volatility relative to stop distance
 
-    // Calculate realistic volatility based on the trade's risk range
-    const riskRange = Math.abs(entry - sl);
-    const rewardRange = Math.abs(tp - entry);
-    const volatility = riskRange * 0.15; // 15% of risk per candle
+    // Determine trend based on trade type
+    const startPrice = trade.entryRange[0];
+    const endPrice = trade.takeProfit[0];
+    const totalMove = endPrice - startPrice;
 
-    // Bias direction based on trade type, but with noise
-    const direction = isLong ? 1 : -1;
-    const drift = (rewardRange / 50) * direction; // Slight drift towards TP
+    for (let i = 0; i < points; i++) {
+      const trend = (totalMove / points) * i; // Linear trend component
+      const randomMove = (Math.random() - 0.5) * volatility;
 
-    // Generate 40 candles
-    for (let i = 0; i < 40; i++) {
-      // Random walk component
-      const noise = (Math.random() - 0.5) * volatility * 2;
-      const change = drift + noise;
+      const open = i === 0 ? startPrice : data[i - 1].close;
+      const close = startPrice + trend + randomMove;
 
-      const close = currentOpen + change;
+      const high = Math.max(open, close) + Math.random() * (volatility * 0.5);
+      const low = Math.min(open, close) - Math.random() * (volatility * 0.5);
 
-      // Generate high/low wicks
-      // High must be >= max(open, close)
-      // Low must be <= min(open, close)
-      const bodyMax = Math.max(currentOpen, close);
-      const bodyMin = Math.min(currentOpen, close);
-
-      const high = bodyMax + Math.random() * (volatility * 0.5);
-      const low = bodyMin - Math.random() * (volatility * 0.5);
-
-      if (!isNaN(currentOpen) && !isNaN(close) && !isNaN(high) && !isNaN(low)) {
-        data.push({
-          i,
-          open: currentOpen,
-          close,
-          high,
-          low
-        });
-      }
-
-      currentOpen = close;
+      data.push({
+        name: i,
+        date: new Date(Date.now() + i * 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        open,
+        high,
+        low,
+        close,
+        bodyRange: [Math.min(open, close), Math.max(open, close)],
+        wickRange: [low, high],
+        isBullish: close >= open
+      });
     }
 
-    // fallback if data is empty
-    if (data.length === 0) {
-      return { data: [], domain: [0, 100] };
-    }
+    // Determine domain for Y-axis
+    const allHighs = data.map(d => d.high);
+    const allLows = data.map(d => d.low);
+    // Include critical levels in domain
+    const minPrice = Math.min(...allLows, trade.stopLoss);
+    const maxPrice = Math.max(...allHighs, ...trade.takeProfit);
 
-    // Calculate domain padding for Y-Axis
-    const allHighs = [...data.map(d => d.high), tp, entry];
-    const allLows = [...data.map(d => d.low), sl, entry];
-
-    const maxPrice = Math.max(...allHighs);
-    const minPrice = Math.min(...allLows);
-
-    // Safety check for flat range
     let range = maxPrice - minPrice;
-    if (range === 0) range = maxPrice * 0.01; // 1% buffer if flat
-    if (range === 0) range = 1; // absolute fallback
+    if (range === 0) range = maxPrice * 0.01;
+    if (range === 0) range = 1;
 
     const domain = [minPrice - (range * 0.1), maxPrice + (range * 0.1)];
 
@@ -298,7 +310,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
           {/* Chart Container */}
           <div className="flex-1 w-full relative z-10 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartConfig.data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+              <ComposedChart data={chartData.data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                 <defs>
                   <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={isLong ? '#22C55E' : '#EF4444'} stopOpacity={0.3} />
@@ -308,7 +320,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                 <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} strokeOpacity={0.2} />
                 <XAxis dataKey="i" hide />
                 <YAxis
-                  domain={chartConfig.domain}
+                  domain={chartData.domain}
                   orientation="right"
                   tick={{ fill: '#9AA4B2', fontSize: 11, fontFamily: 'monospace' }}
                   axisLine={false}
@@ -363,20 +375,33 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                   />
                 ))}
 
-                {/* Price Area with gradient fill */}
-                <Area
-                  type="monotone"
-                  dataKey="close"
-                  stroke={isLong ? '#22C55E' : '#EF4444'}
-                  strokeWidth={2}
-                  fill="url(#priceGradient)"
+                {/* Candlestick Rendering - Standard Bar Implementation */}
+                {/* Wick Layer - Thin bar from Low to High */}
+                <Bar
+                  dataKey="wickRange"
+                  barSize={1}
                   animationDuration={1500}
-                  dot={false}
-                />
-                {/* High/Low range as subtle lines */}
-                <Line type="monotone" dataKey="high" stroke="#4B5563" strokeWidth={1} strokeDasharray="2 2" dot={false} activeDot={false} />
-                <Line type="monotone" dataKey="low" stroke="#4B5563" strokeWidth={1} strokeDasharray="2 2" dot={false} activeDot={false} />
-              </AreaChart>
+                >
+                  {chartData.data.map((entry, index) => (
+                    <Cell key={`wick-${index}`} fill={entry.isBullish ? '#22C55E' : '#EF4444'} />
+                  ))}
+                </Bar>
+
+                {/* Body Layer - Thicker bar from Open to Close */}
+                <Bar
+                  dataKey="bodyRange"
+                  barSize={8}
+                  animationDuration={1500}
+                >
+                  {chartData.data.map((entry, index) => (
+                    <Cell key={`body-${index}`} fill={entry.isBullish ? '#22C55E' : '#EF4444'} />
+                  ))}
+                </Bar>
+
+                {/* High/Low range hidden but needed for domain */}
+                <Line type="monotone" dataKey="high" stroke="none" dot={false} activeDot={false} />
+                <Line type="monotone" dataKey="low" stroke="none" dot={false} activeDot={false} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
 
@@ -439,6 +464,28 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                 )}
               </button>
             )}
+            {aiAnalysis && !aiAnalysis.translatedData && (
+              <button
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-status-neutral/10 border border-status-neutral/20 text-status-neutral text-sm font-bold hover:bg-status-neutral/20 transition-all disabled:opacity-50"
+              >
+                {isTranslating ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Languages size={16} />
+                )}
+                ترجمة للعربية
+              </button>
+            )}
+            {aiAnalysis?.translatedData && (
+              <button
+                onClick={() => setAiAnalysis({ ...aiAnalysis, translatedData: undefined })}
+                className="text-xs font-bold text-text-muted hover:text-text-primary transition-colors underline"
+              >
+                Show English
+              </button>
+            )}
           </div>
 
           {loadingAi && (
@@ -457,160 +504,204 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
           )}
 
           {aiAnalysis && (
-            <div className="animate-fade-in space-y-6">
+            <div className="animate-fade-in space-y-8">
+              {/* 1. Decision Hero Section */}
+              <div className={`rounded-2xl p-8 border border-surface shadow-2xl relative overflow-hidden bg-background-primary/50 backdrop-blur-sm`}>
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                  <Cpu size={120} />
+                </div>
 
-              {/* 1. Hero Verdict Section */}
-              <div className={`rounded-xl p-6 border-2 ${getDecisionColor(aiAnalysis.currentStatus?.decision || '')}`}>
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="text-center md:text-left">
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 block">Strategic Decision</span>
-                    <h2 className="text-4xl font-black tracking-tight">{aiAnalysis.currentStatus?.decision || 'WAIT'}</h2>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-6 opacity-80">
+                    <Zap size={18} className="text-status-neutral" />
+                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">Strategic Decision</span>
                   </div>
-                  <div className="h-12 w-px bg-current opacity-20 hidden md:block"></div>
-                  <div className="flex-1">
-                    <p className="text-lg font-medium opacity-90 italic">"{aiAnalysis.currentStatus?.keyPrinciple || 'Capital preservation first.'}"</p>
+
+                  <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+                    <div className={`px-8 py-6 rounded-xl border-2 transition-all ${getDecisionColor(aiAnalysis.currentStatus?.decision || '')} flex flex-col items-center justify-center min-w-[220px] shadow-lg`}>
+                      <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">Decision: {aiAnalysis.currentStatus?.decision}</span>
+                      <h2 className="text-5xl font-black tracking-tighter italic">{aiAnalysis.currentStatus?.decision || 'WAIT'}</h2>
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-2xl font-medium text-text-primary leading-tight tracking-tight">
+                        {aiAnalysis.translatedData?.currentStatus.keyPrinciple || aiAnalysis.currentStatus?.keyPrinciple || 'Capital preservation first.'}
+                      </p>
+                      {aiAnalysis.translatedData && (
+                        <p className="text-xs font-bold text-status-neutral mt-2 uppercase tracking-widest">
+                          Decision: {aiAnalysis.translatedData.currentStatus.decision}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Market Context Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-surface/30 rounded-xl p-4 border border-surface flex items-center justify-between">
-                  <span className="text-text-muted text-sm">Market Position</span>
-                  <span className="font-bold text-text-primary">{aiAnalysis.currentStatus?.marketPosition || 'Unknown'}</span>
-                </div>
-                <div className="bg-surface/30 rounded-xl p-4 border border-surface flex items-center justify-between">
-                  <span className="text-text-muted text-sm">Risk Note</span>
-                  <span className="font-bold text-status-warning">{aiAnalysis.currentStatus?.riskNote || 'N/A'}</span>
-                </div>
-              </div>
+              {/* 2. Metrics Table (The Image Design) */}
+              <div className="bg-background-primary/30 border border-surface rounded-2xl overflow-hidden">
+                <div className="grid grid-cols-1 divide-y divide-surface/50">
+                  {/* Confidence Row */}
+                  <div className="flex justify-between items-center p-5 group hover:bg-surface/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-status-high/10 flex items-center justify-center text-status-high">
+                        <BadgeCheck size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Confidence</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-bold text-status-high/60">{aiAnalysis.currentStatus.confidenceScore}%</span>
+                      <span className="text-lg font-black text-status-high tracking-tight">
+                        {aiAnalysis.currentStatus.marketPosition}
+                      </span>
+                    </div>
+                  </div>
 
-              {/* 3. Scenarios (Buy/Sell) */}
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Bearish Card */}
-                <div className="bg-background-secondary border border-surface rounded-xl overflow-hidden flex flex-col hover:border-status-risk/30 transition-colors">
-                  <div className="p-4 bg-status-risk/10 border-b border-status-risk/10">
-                    <h3 className="font-bold text-status-risk flex items-center gap-2">
-                      <ArrowDownRight size={20} /> Bearish Invalidation
-                    </h3>
-                  </div>
-                  <div className="p-5 flex-1 space-y-4">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Setup</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria?.setupName || 'N/A'}</div>
+                  {/* Execution Level Row */}
+                  <div className="flex justify-between items-center p-5 group hover:bg-surface/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-status-neutral/10 flex items-center justify-center text-status-neutral">
+                        <Play size={18} className="rotate-90" />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Execution Level</span>
                     </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Trigger</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.sellCriteria?.triggerType || 'N/A'}</div>
-                    </div>
-                    <div className="bg-surface/50 rounded-lg p-3">
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider mb-2 block">Checklist</span>
-                      <ul className="space-y-2">
-                        {(aiAnalysis.sellCriteria?.checklist || []).map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                            <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-risk flex-shrink-0" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="flex items-center gap-6 font-mono">
+                      <span className="text-sm font-bold text-text-muted line-through opacity-50">{trade.entryRange[0]}</span>
+                      <span className="text-lg font-black text-status-warning tracking-tight">
+                        {aiAnalysis.currentStatus.suggestedExecutionLevel || trade.entryRange[0]}
+                      </span>
                     </div>
                   </div>
-                  <div className="p-3 bg-surface/30 border-t border-surface text-xs text-text-muted">
-                    <span className="font-bold text-status-risk">Outcome:</span> {aiAnalysis.sellCriteria?.outcome || 'N/A'}
-                  </div>
-                </div>
 
-                {/* Bullish Card */}
-                <div className="bg-background-secondary border border-surface rounded-xl overflow-hidden flex flex-col hover:border-status-high/30 transition-colors">
-                  <div className="p-4 bg-status-high/10 border-b border-status-high/10">
-                    <h3 className="font-bold text-status-high flex items-center gap-2">
-                      <ArrowUpRight size={20} /> Bullish Confirmation
-                    </h3>
-                  </div>
-                  <div className="p-5 flex-1 space-y-4">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Setup</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria?.setupName || 'N/A'}</div>
+                  {/* Stop Loss Row */}
+                  <div className="flex justify-between items-center p-5 group hover:bg-surface/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-status-risk/10 flex items-center justify-center text-status-risk">
+                        <ShieldAlert size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Stop Loss</span>
                     </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Trigger</span>
-                      <div className="font-medium text-text-primary">{aiAnalysis.buyCriteria?.triggerType || 'N/A'}</div>
-                    </div>
-                    <div className="bg-surface/50 rounded-lg p-3">
-                      <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider mb-2 block">Checklist</span>
-                      <ul className="space-y-2">
-                        {(aiAnalysis.buyCriteria?.checklist || []).map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                            <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-high flex-shrink-0" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="flex items-center gap-6 font-mono">
+                      <span className="text-sm font-bold text-text-muted line-through opacity-50">{trade.stopLoss}</span>
+                      <span className="text-lg font-black text-status-high tracking-tight">
+                        {aiAnalysis.currentStatus.suggestedStopLoss || trade.stopLoss}
+                      </span>
                     </div>
                   </div>
-                  <div className="p-3 bg-surface/30 border-t border-surface text-xs text-text-muted">
-                    <span className="font-bold text-status-high">Outcome:</span> {aiAnalysis.buyCriteria?.outcome || 'N/A'}
+
+                  {/* Risk/Reward Row */}
+                  <div className="flex justify-between items-center p-5 group hover:bg-surface/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-primary">
+                        <Scale size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Risk/Reward</span>
+                    </div>
+                    <div className="flex items-center gap-6 font-mono">
+                      <span className="text-sm font-bold text-text-muted opacity-50">1:{((Math.abs(trade.takeProfit[0] - trade.entryRange[0])) / Math.abs(trade.entryRange[0] - trade.stopLoss)).toFixed(1)}</span>
+                      <span className="text-lg font-black text-status-neutral tracking-tight">
+                        {aiAnalysis.currentStatus.suggestedRiskReward || `1:${((Math.abs(trade.takeProfit[0] - trade.entryRange[0])) / Math.abs(trade.entryRange[0] - trade.stopLoss)).toFixed(1)}`}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* 4. Risk & Discipline Notes (NEW) */}
-              {aiAnalysis.riskDiscipline && (
-                <div className="bg-surface/20 border border-surface rounded-xl p-6">
-                  <h3 className="font-bold text-text-primary mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-                    <Scale size={16} className="text-status-neutral" /> Risk & Discipline Protocol
+              <div className="space-y-8">
+                {/* 3. Alternative Scenario */}
+                <div className="bg-background-secondary border border-surface rounded-2xl p-6 shadow-sm flex flex-col w-full">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-text-primary mb-6 flex items-center gap-2">
+                    <Activity size={18} className="text-status-neutral" /> Alternative Scenario
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-6">
-                    <div>
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">Stop Loss Analysis</span>
-                      <p className="text-sm text-text-secondary border-l-2 border-status-risk pl-3">
-                        {aiAnalysis.riskDiscipline?.stopLossComment || 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">R:R Quality</span>
-                      <p className="text-sm text-text-secondary border-l-2 border-status-high pl-3">
-                        {aiAnalysis.riskDiscipline?.riskRewardQuality || 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-2">Behavioral Check</span>
-                      <p className="text-sm text-text-secondary border-l-2 border-status-warning pl-3">
-                        {aiAnalysis.riskDiscipline?.behavioralNote || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  <div className="space-y-6 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-4 bg-surface/30 rounded-xl border border-surface/50">
+                        <p className="text-xs font-bold text-text-muted uppercase mb-1">Trigger</p>
+                        <p className="text-sm font-medium text-text-primary leading-relaxed">
+                          {aiAnalysis.alternativeScenario.invalidationTrigger}
+                        </p>
+                      </div>
 
-              {/* 5. Action Rules */}
-              <div className="bg-background-primary border border-surface rounded-xl p-6">
-                <h3 className="font-bold text-text-primary mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-                  <Activity size={16} className="text-status-neutral" /> Action Protocol
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 p-3 bg-surface/30 rounded-lg">
-                    <span className="font-mono text-status-neutral font-bold text-xl">01</span>
-                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules?.rule1 || 'Follow your trading plan.'}</p>
-                  </div>
-                  <div className="flex items-center gap-4 p-3 bg-surface/30 rounded-lg">
-                    <span className="font-mono text-status-neutral font-bold text-xl">02</span>
-                    <p className="text-sm text-text-secondary font-medium">{aiAnalysis.actionRules?.rule2 || 'Do not adjust stop loss emotionally.'}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="p-3 bg-status-neutral/5 rounded-xl border border-status-neutral/20 text-center">
+                          <p className="text-[10px] font-black text-text-muted uppercase mb-1">Entry</p>
+                          <p className="text-lg font-mono font-bold text-status-neutral">{aiAnalysis.alternativeScenario.entry}</p>
+                        </div>
+                        <div className="p-3 bg-status-risk/5 rounded-xl border border-status-risk/20 text-center">
+                          <p className="text-[10px] font-black text-text-muted uppercase mb-1">Stop Loss</p>
+                          <p className="text-lg font-mono font-bold text-status-risk">{aiAnalysis.alternativeScenario.stopLoss}</p>
+                        </div>
+                        <div className="p-3 bg-status-high/5 rounded-xl border border-status-high/20 text-center">
+                          <p className="text-[10px] font-black text-text-muted uppercase mb-1">Target</p>
+                          <p className="text-lg font-mono font-bold text-status-high">{aiAnalysis.alternativeScenario.takeProfit}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-5 bg-surface/30 rounded-xl border border-surface/50">
+                      <p className="text-xs font-bold text-text-muted uppercase mb-2">Rationale</p>
+                      <p className="text-base font-medium text-text-secondary leading-relaxed italic">
+                        "{aiAnalysis.translatedData?.alternativeScenario.rationale || aiAnalysis.alternativeScenario.rationale}"
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-surface/30 rounded-xl border border-surface/50">
+                        <p className="text-xs font-bold text-text-muted uppercase mb-1">Bias Shift</p>
+                        <p className="text-sm font-bold text-status-risk">
+                          {aiAnalysis.translatedData?.alternativeScenario.biasShift || aiAnalysis.alternativeScenario.biasShift}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-surface/30 rounded-xl border border-surface/50">
+                        <p className="text-xs font-bold text-text-muted uppercase mb-1">Probable Move</p>
+                        <p className="text-sm font-bold text-status-neutral">
+                          {aiAnalysis.translatedData?.alternativeScenario.nextProbableMove || aiAnalysis.alternativeScenario.nextProbableMove}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-surface flex justify-between items-center">
-                  <span className="text-xs font-bold text-text-muted uppercase">Final Recommendation</span>
-                  <span className="text-lg font-bold text-text-primary">{aiAnalysis.actionRules?.recommendation || 'Proceed with caution.'}</span>
+
+                {/* 4. Risk & Discipline Protocol */}
+                <div className="bg-surface/20 border border-surface rounded-2xl p-8 flex flex-col w-full">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-text-primary mb-6 flex items-center gap-2">
+                    <Shield size={16} className="text-status-neutral" /> Risk & Discipline Protocol
+                  </h3>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                    {(aiAnalysis.translatedData?.riskDiscipline || aiAnalysis.riskDiscipline).map((rule, idx) => (
+                      <li key={idx} className="flex gap-4 text-sm font-bold text-text-secondary items-center p-4 bg-surface/30 rounded-xl border border-surface/50 transition-all hover:border-status-neutral/30 group">
+                        <span className="w-2 h-2 rounded-full bg-status-neutral shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.5)] group-hover:scale-125 transition-transform" />
+                        {rule}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* 5. Action Protocol */}
+              <div className="bg-status-neutral rounded-2xl p-6 shadow-xl shadow-blue-900/20 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Activity size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-white/70">Action Protocol</h4>
+                    <p className="text-lg font-bold text-white tracking-tight">
+                      {aiAnalysis.translatedData?.actionProtocol || aiAnalysis.actionProtocol}
+                    </p>
+                  </div>
+                </div>
+                <div className="h-8 w-px bg-white/10 hidden md:block"></div>
+                <div className="text-xs font-bold text-white/60 tracking-widest uppercase">
+                  Safety First • Capital Preservation
                 </div>
               </div>
 
               {/* Token Usage Stats */}
               {aiAnalysis.usageMetadata && (
                 <div className="text-[10px] text-text-muted mt-4 text-center font-mono opacity-60">
-                  AI Token Usage: {aiAnalysis.usageMetadata.totalTokenCount} ({aiAnalysis.usageMetadata.promptTokenCount} In / {aiAnalysis.usageMetadata.candidatesTokenCount} Out)
+                  AI ENGINE v2.0 • {aiAnalysis.usageMetadata.totalTokenCount} TOKENS PROCESSED
                 </div>
               )}
-
             </div>
           )}
         </section>
