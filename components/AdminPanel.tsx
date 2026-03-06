@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, MessageSquare, ShieldAlert, Settings,
   Search, CheckCircle2, XCircle, Shield, Ban, LogOut,
@@ -6,12 +6,14 @@ import {
   DollarSign, CreditCard, TrendingUp, Award, Gift, Briefcase, Zap, Calendar, X, Save, Edit,
   BarChart2, ArrowUpRight, ArrowDownRight, Pin, Hash, Cpu, ArrowLeft, Megaphone,
   UserCog, Lock, Key, Globe, Database, Wifi, Bell, Send, AlertOctagon,
-  Trophy, ShieldCheck, Mail, FileText, Clock, Play, Pause, Plus, ChevronRight, MousePointerClick
+  Trophy, ShieldCheck, Mail, FileText, Clock, Play, Pause, Plus, ChevronRight, MousePointerClick,
+  Star, ThumbsUp, ThumbsDown, Inbox
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip, CartesianGrid } from 'recharts';
 import { MOCK_TRADES, MOCK_DISCUSSIONS } from '../constants';
 import { CampaignJoiner } from '../types';
 import { z } from 'zod';
+import { getAllFeedback } from '../services/appwrite';
 
 interface AdminPanelProps {
   onNavigateBack: () => void;
@@ -121,7 +123,21 @@ const PermissionToggle = ({ label, checked, onChange }: { label: string, checked
 );
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout, campaignJoins }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'team' | 'campaigns' | 'content' | 'financials' | 'engagement' | 'system' | 'broadcast' | 'trades' | 'discussions' | 'newsletter'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'team' | 'campaigns' | 'content' | 'financials' | 'engagement' | 'system' | 'broadcast' | 'trades' | 'discussions' | 'newsletter' | 'feedback'>('overview');
+  const [feedbackList, setFeedbackList] = useState<any[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeTab === 'feedback') {
+      setFeedbackLoading(true);
+      setFeedbackError(null);
+      getAllFeedback()
+        .then(docs => setFeedbackList(docs))
+        .catch(() => setFeedbackError('Failed to load feedback.'))
+        .finally(() => setFeedbackLoading(false));
+    }
+  }, [activeTab]);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Local state for managing lists
@@ -355,6 +371,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
 
           <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2 mt-6 px-2">Operations</div>
           <button onClick={() => setActiveTab('newsletter')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'newsletter' ? 'bg-surface text-text-primary border-l-4 border-status-risk' : 'text-text-secondary hover:bg-surface/50'}`}><Mail size={18} /> Newsletter</button>
+          <button onClick={() => setActiveTab('feedback')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'feedback' ? 'bg-surface text-text-primary border-l-4 border-status-risk' : 'text-text-secondary hover:bg-surface/50'}`}><Inbox size={18} /> User Feedback</button>
           <button onClick={() => setActiveTab('content')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'content' ? 'bg-surface text-text-primary border-l-4 border-status-risk' : 'text-text-secondary hover:bg-surface/50'}`}>
             <div className="relative"><ShieldAlert size={18} />{reports.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-status-risk rounded-full"></span>}</div> Moderation
           </button>
@@ -548,6 +565,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
               </div>
               {airdropError && <p className="text-status-risk text-sm mt-3 font-bold"><AlertTriangle size={14} className="inline mr-1" /> {airdropError}</p>}
             </div>
+          </div>
+        )}
+
+        {/* --- FEEDBACK TAB --- */}
+        {activeTab === 'feedback' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2"><Inbox size={22} className="text-status-neutral" /> All User Feedback</h2>
+                <p className="text-text-muted text-sm mt-1">Showing all submitted feedback, newest first.</p>
+              </div>
+              <span className="text-sm font-bold text-text-muted bg-surface border border-surface px-3 py-1 rounded-full">{feedbackList.length} entries</span>
+            </div>
+
+            {feedbackLoading && (
+              <div className="text-center py-16 text-text-muted">
+                <div className="w-8 h-8 border-2 border-status-neutral border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                Loading feedback...
+              </div>
+            )}
+
+            {feedbackError && (
+              <div className="text-center py-16 text-status-risk">
+                <AlertTriangle size={32} className="mx-auto mb-3" />
+                <p className="font-bold">{feedbackError}</p>
+              </div>
+            )}
+
+            {!feedbackLoading && !feedbackError && feedbackList.length === 0 && (
+              <div className="text-center py-16 text-text-muted bg-background-secondary border border-surface rounded-xl">
+                <Inbox size={40} className="mx-auto mb-4 opacity-40" />
+                <p className="font-bold">No feedback submitted yet.</p>
+              </div>
+            )}
+
+            {!feedbackLoading && !feedbackError && feedbackList.length > 0 && (
+              <div className="space-y-4">
+                {feedbackList.map((item) => {
+                  const rating = item.rating ?? item.score ?? null;
+                  const type = item.type ?? item.category ?? 'General';
+                  const message = item.message ?? item.content ?? item.text ?? 'No message provided.';
+                  const email = item.email ?? item.userEmail ?? item.userId ?? 'Anonymous';
+                  const createdAt = item.$createdAt ? new Date(item.$createdAt).toLocaleString() : 'Unknown date';
+                  const typeColor = type === 'Bug' ? 'bg-status-risk/10 text-status-risk' : type === 'Feature' ? 'bg-purple-500/10 text-purple-400' : 'bg-status-neutral/10 text-status-neutral';
+
+                  return (
+                    <div key={item.$id} className="bg-background-secondary border border-surface rounded-xl p-5 hover:border-status-neutral/40 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${typeColor}`}>{type}</span>
+                            {rating !== null && (
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <Star key={star} size={13} className={star <= rating ? 'text-amber-400 fill-amber-400' : 'text-surface'} />
+                                ))}
+                                <span className="text-xs text-text-muted ml-1">{rating}/5</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-text-primary text-sm leading-relaxed">{message}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-surface/50">
+                        <span className="text-xs text-text-muted font-medium">{email}</span>
+                        <span className="text-xs text-text-muted flex items-center gap-1"><Clock size={11} />{createdAt}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

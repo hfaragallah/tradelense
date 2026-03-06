@@ -1,0 +1,9 @@
+git+https://github.com/crewAIInc/crewAI.git
+langchain-openai
+fastapi
+uvicorn
+pydantic
+python-dotenv
+duckduckgo-search
+yfinance
+asyncer

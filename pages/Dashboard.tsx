@@ -16,7 +16,7 @@ import { Settings } from '../components/Settings';
 import { PremiumModal } from '../components/PremiumModal';
 import { AdminPanel } from '../components/AdminPanel';
 import { AuthModal } from '../components/AuthModal';
-import { MOCK_TRADES, MOCK_PROFILE, MOCK_LEADERBOARD, MOCK_PULSE, MOCK_TRUST_DATA, MOCK_DISCUSSIONS, MOCK_NOTIFICATIONS, DEFAULT_SETTINGS } from '../constants';
+import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MOCK_TRUST_DATA, MOCK_DISCUSSIONS, MOCK_NOTIFICATIONS, DEFAULT_SETTINGS } from '../constants';
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -454,6 +454,7 @@ const Dashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<'feed' | 'detail' | 'shadow' | 'profile' | 'leaderboard' | 'trust' | 'social' | 'discussion-detail' | 'notifications' | 'settings' | 'admin'>('feed');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [selectedDiscussion, setSelectedDiscussion] = useState<DiscussionPost | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<TraderProfile | null>(null);
 
   // Initialize GA and Track Page Views
   useEffect(() => {
@@ -618,7 +619,7 @@ const Dashboard: React.FC = () => {
   // Navigation Handler
   const handleNavigate = (view: string) => {
     // Protected Routes
-    if (['settings', 'notifications', 'profile', 'admin'].includes(view)) {
+    if (['settings', 'notifications', 'admin'].includes(view)) {
       if (isGuest) {
         setIsAuthModalOpen(true);
         return;
@@ -631,6 +632,7 @@ const Dashboard: React.FC = () => {
       setUserVote(null); // Reset vote on nav
     }
     if (view !== 'discussion-detail') setSelectedDiscussion(null);
+    if (view !== 'profile') setSelectedProfile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -928,13 +930,15 @@ const Dashboard: React.FC = () => {
         ) : <div>Discussion not found</div>;
 
       case 'profile':
-        return userProfile ? (
+        // Show the selected profile from search, or the user's own profile, or fallback to MOCK_PROFILE
+        const profileToShow = selectedProfile || userProfile || MOCK_PROFILE;
+        return profileToShow ? (
           <Profile
-            profile={userProfile}
-            isFollowing={followedTraders.includes(userProfile.id)}
-            onToggleFollow={() => handleToggleFollow(userProfile.id)}
+            profile={profileToShow}
+            isFollowing={followedTraders.includes(profileToShow.id)}
+            onToggleFollow={() => handleToggleFollow(profileToShow.id)}
           />
-        ) : null; // Should be protected by navigation guard
+        ) : null;
 
       case 'leaderboard':
         return <Leaderboard
@@ -1164,9 +1168,14 @@ const Dashboard: React.FC = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         trades={trades}
+        users={MOCK_USERS}
         onSearchSelect={(trade) => {
           setSelectedTrade(trade);
           setCurrentView('detail');
+        }}
+        onSearchSelectUser={(profile) => {
+          setSelectedProfile(profile);
+          setCurrentView('profile');
         }}
       >
         {/* 3-Column Grid Layout */}

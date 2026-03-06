@@ -14,7 +14,9 @@ interface LayoutProps {
   onOpenAuth: () => void;
   onLogout: () => void;
   trades: Trade[];
+  users: TraderProfile[];
   onSearchSelect: (trade: Trade) => void;
+  onSearchSelectUser: (user: TraderProfile) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -28,7 +30,9 @@ export const Layout: React.FC<LayoutProps> = ({
   onOpenAuth,
   onLogout,
   trades,
-  onSearchSelect
+  users,
+  onSearchSelect,
+  onSearchSelectUser
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -354,7 +358,9 @@ export const Layout: React.FC<LayoutProps> = ({
       {isSearchOpen && (
         <SearchPanel
           trades={trades}
+          users={users}
           onSelectTrade={onSearchSelect}
+          onSelectUser={onSearchSelectUser}
           onClose={() => setIsSearchOpen(false)}
         />
       )}

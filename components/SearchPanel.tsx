@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, TrendingUp, TrendingDown, Clock, Tag, ChevronRight, Filter } from 'lucide-react';
-import { Trade, TradeType, TimeHorizon } from '../types';
+import { Trade, TradeType, TimeHorizon, TraderProfile } from '../types';
 
 interface SearchPanelProps {
     trades: Trade[];
+    users: TraderProfile[];
     onSelectTrade: (trade: Trade) => void;
+    onSelectUser: (user: TraderProfile) => void;
     onClose: () => void;
 }
 
@@ -12,7 +14,7 @@ const MARKET_OPTIONS = ['All', 'Crypto', 'Forex', 'Shares', 'Indices', 'Metals',
 const TYPE_OPTIONS = ['All', 'LONG', 'SHORT'];
 const HORIZON_OPTIONS = ['All', ...Object.values(TimeHorizon)];
 
-export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, onSelectTrade, onClose }) => {
+export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelectTrade, onSelectUser, onClose }) => {
     const [query, setQuery] = useState('');
     const [filterMarket, setFilterMarket] = useState('All');
     const [filterType, setFilterType] = useState('All');
@@ -24,8 +26,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, onSelectTrade,
         inputRef.current?.focus();
     }, []);
 
-    // Live filtering
-    const results = trades.filter(t => {
+    // Live filtering for trades
+    const tradeResults = trades.filter(t => {
         const q = query.toLowerCase();
         const matchesQuery =
             !q ||
@@ -43,6 +45,15 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, onSelectTrade,
     });
 
     const hasActiveFilters = filterMarket !== 'All' || filterType !== 'All' || filterHorizon !== 'All';
+
+    // Live filtering for users
+    const userResults = users.filter(u => {
+        if (hasActiveFilters) return false; // Hide users if trade filters are active
+        const q = query.toLowerCase();
+        return !q || u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q);
+    });
+
+    const totalResults = tradeResults.length + userResults.length;
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col" onClick={onClose}>
@@ -119,8 +130,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, onSelectTrade,
                     <div className="px-5 py-3 border-b border-surface flex items-center justify-between">
                         <span className="text-xs text-text-muted font-medium">
                             {query || hasActiveFilters
-                                ? `${results.length} result${results.length !== 1 ? 's' : ''}`
-                                : `${trades.length} trades available`}
+                                ? `${totalResults} result${totalResults !== 1 ? 's' : ''}`
+                                : `${trades.length} trades, ${users.length} users`}
                         </span>
                         {query && (
                             <span className="text-xs text-text-muted">
@@ -129,15 +140,29 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, onSelectTrade,
                         )}
                     </div>
 
-                    {results.length === 0 ? (
+                    {totalResults === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-text-muted">
                             <Search size={40} className="mb-4 opacity-30" />
-                            <p className="font-medium">No trades found</p>
+                            <p className="font-medium">No results found</p>
                             <p className="text-sm mt-1 opacity-70">Try a different search or remove filters</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-surface">
-                            {results.map(trade => (
+                            {userResults.length > 0 && (
+                                <div className="px-5 py-2 bg-background-primary/50 text-xs font-bold text-text-muted uppercase tracking-wider">Users</div>
+                            )}
+                            {userResults.map(user => (
+                                <SearchResultUserRow
+                                    key={user.id}
+                                    user={user}
+                                    query={query}
+                                    onClick={() => { onSelectUser(user); onClose(); }}
+                                />
+                            ))}
+                            {tradeResults.length > 0 && (
+                                <div className="px-5 py-2 bg-background-primary/50 text-xs font-bold text-text-muted uppercase tracking-wider">Trades</div>
+                            )}
+                            {tradeResults.map(trade => (
                                 <SearchResultRow
                                     key={trade.id}
                                     trade={trade}
@@ -250,6 +275,51 @@ function SearchResultRow({ trade, query, onClick }: { trade: Trade; query: strin
             <div className="flex-shrink-0 text-right">
                 <span className={`text-lg font-bold font-mono ${confidenceColor}`}>{score}%</span>
                 <p className="text-[10px] text-text-muted">confidence</p>
+            </div>
+
+            <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-colors flex-shrink-0" />
+        </button>
+    );
+}
+
+// ─────────────────────────────────────────────────────────
+
+function SearchResultUserRow({ user, query, onClick }: { user: TraderProfile; query: string; onClick: () => void }) {
+    const highlight = (text: string) => {
+        if (!query) return text;
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return text;
+        return (
+            <>
+                {text.slice(0, idx)}
+                <mark className="bg-status-neutral/30 text-text-primary rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+                {text.slice(idx + query.length)}
+            </>
+        );
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-surface/40 transition-colors text-left group"
+        >
+            <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center font-bold text-text-secondary border border-surface flex-shrink-0">
+                {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover rounded-full" />
+                ) : (
+                    user.name.charAt(0)
+                )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-text-primary">{highlight(user.name)}</span>
+                    <span className="text-[10px] text-text-muted">{highlight(user.handle)}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-text-muted">
+                    <span className="flex items-center gap-1 font-bold text-status-high">Rep: {user.reputationScore}</span>
+                    <span className="flex items-center gap-1">Win Rate: {user.winRate}%</span>
+                </div>
             </div>
 
             <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-colors flex-shrink-0" />

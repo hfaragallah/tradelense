@@ -59,6 +59,65 @@ export const MOCK_PROFILE: TraderProfile = {
   ]
 };
 
+export const MOCK_USERS: TraderProfile[] = [
+  MOCK_PROFILE,
+  {
+    id: 'u_1',
+    name: 'Sarah Jenkins',
+    handle: '@sarahj',
+    isAdmin: false,
+    reputationScore: 92,
+    points: 1200,
+    joinedDate: '2023-03-10',
+    winRate: 68,
+    riskAdjustedReturn: 2.1,
+    totalTrades: 215,
+    badges: [
+      { id: 'b3', label: 'Consistent', icon: 'TrendingUp', color: 'text-status-neutral', description: 'Profitable for 6 consecutive months.' }
+    ],
+    accuracyHistory: [
+      { date: 'Jan', accuracy: 60 },
+      { date: 'Feb', accuracy: 65 },
+      { date: 'Mar', accuracy: 68 },
+      { date: 'Apr', accuracy: 62 },
+      { date: 'May', accuracy: 70 },
+      { date: 'Jun', accuracy: 69 },
+      { date: 'Jul', accuracy: 68 }
+    ],
+    biasInsights: []
+  },
+  {
+    id: 'u_3',
+    name: 'Quant Daddy',
+    handle: '@quant_daddy',
+    isAdmin: false,
+    reputationScore: 89,
+    points: 850,
+    joinedDate: '2023-05-22',
+    winRate: 59,
+    riskAdjustedReturn: 3.5,
+    totalTrades: 420,
+    badges: [],
+    accuracyHistory: [],
+    biasInsights: []
+  },
+  {
+    id: 'u_4',
+    name: 'Safe Hands',
+    handle: '@safehands',
+    isAdmin: false,
+    reputationScore: 88,
+    points: 600,
+    joinedDate: '2023-08-05',
+    winRate: 75,
+    riskAdjustedReturn: 1.8,
+    totalTrades: 85,
+    badges: [],
+    accuracyHistory: [],
+    biasInsights: []
+  }
+];
+
 export const MOCK_TRADES: Trade[] = [
   {
     id: 't1',

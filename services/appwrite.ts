@@ -315,7 +315,11 @@ export async function getAllFeedback() {
     try {
         const response = await databases.listDocuments(
             DATABASE_ID,
-            COLLECTIONS.FEEDBACK
+            COLLECTIONS.FEEDBACK,
+            [
+                Query.orderDesc('$createdAt'), // Newest first
+                Query.limit(100)
+            ]
         );
         return response.documents;
     } catch (error) {
