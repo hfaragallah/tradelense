@@ -13,4 +13,4 @@ services:
       - key: OPENROUTER_MODEL
         value: openai/google/gemini-2.0-flash-001
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.12.0"

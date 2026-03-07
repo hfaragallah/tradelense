@@ -1,4 +1,4 @@
-crewai==0.102.0
+crewai==1.10.1
 langchain-openai
 fastapi
 uvicorn[standard]
