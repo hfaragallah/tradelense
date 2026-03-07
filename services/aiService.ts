@@ -1,8 +1,8 @@
 import { Trade } from "../types";
 
-// Use relative URL - Vite proxy handles routing to http://127.0.0.1:8000
-// This eliminates ALL CORS, IPv6, and cross-origin issues permanently
-const AI_BACKEND_URL = "";
+// In development: Vite proxy routes /api → http://127.0.0.1:8000 (no CORS issues)
+// In production (Netlify): VITE_AI_BACKEND_URL must be set to the deployed backend URL (e.g. Render)
+const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || "";
 
 export interface CrewAIReport {
     expertIntro: string;

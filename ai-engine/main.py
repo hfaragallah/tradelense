@@ -7,15 +7,19 @@ import asyncer
 
 app = FastAPI(title="TradeLens AI Agent Backend")
 
-# Allow requests from the Vite frontend
+# Allow requests from the Vite frontend (local) and Netlify (production)
+import os
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+# Allow all HTTPS origins in production (covers any Netlify subdomain or custom domain)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173", # Vite default
-        "http://127.0.0.1:5173",
-    ],
+    allow_origin_regex=r"https://.*",  # allow all HTTPS (Netlify, custom domains)
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
