@@ -1,5 +1,6 @@
 crewai==1.10.1
 langchain-openai
+langchain-community
 fastapi
 uvicorn[standard]
 pydantic
