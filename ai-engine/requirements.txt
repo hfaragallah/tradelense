@@ -1,4 +1,5 @@
 crewai==1.10.1
+litellm
 langchain-openai
 langchain-community
 fastapi
