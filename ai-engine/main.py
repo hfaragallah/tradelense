@@ -35,6 +35,27 @@ class AnalysisRequest(BaseModel):
 class AnalysisResponse(BaseModel):
     report: str
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "TradeLens AI Engine is running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+@app.get("/api/test-env")
+async def test_env():
+    import os
+    from agents import model_name
+    key = os.getenv("OPENROUTER_API_KEY")
+    masked_key = f"{key[:4]}...{key[-4:]}" if key and len(key) > 8 else "NOT SET"
+    return {
+        "model": model_name,
+        "api_key_status": "Set" if key else "Missing",
+        "api_key_masked": masked_key,
+        "environment": "Production" if os.getenv("RENDER") else "Development"
+    }
+
 @app.post("/api/analyze", response_model=AnalysisResponse)
 async def analyze_trade(request: AnalysisRequest):
     print(f"\n--- Recieved Analysis Request for: {request.asset} ---")

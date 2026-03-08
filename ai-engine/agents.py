@@ -3,18 +3,30 @@ from crewai import Agent, LLM
 from dotenv import load_dotenv
 from tools import search_tool
 
-# Load the ai-engine/.env (which contains OPENROUTER_API_KEY)
+# Load the .env only if it exists (local development)
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-load_dotenv(dotenv_path=env_path, override=True)
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path, override=True)
+    print("DEBUG: Local .env loaded")
+else:
+    print("DEBUG: No local .env found, using system environment variables")
 
 # Configure OpenRouter via LiteLLM
-openrouter_key = os.getenv("OPENROUTER_API_KEY", "missing-key")
-os.environ["OPENROUTER_API_KEY"] = openrouter_key
-os.environ["OPENAI_API_KEY"] = openrouter_key
+openrouter_key = os.getenv("OPENROUTER_API_KEY")
+model_name = os.getenv("OPENROUTER_MODEL", "openai/google/gemini-2.0-flash-001")
+
+if not openrouter_key:
+    print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
+else:
+    masked_key = f"{openrouter_key[:4]}...{openrouter_key[-4:]}" if len(openrouter_key) > 8 else "***"
+    print(f"DEBUG: Using Model: {model_name}")
+    print(f"DEBUG: API Key detected (Masked): {masked_key}")
+
+os.environ["OPENAI_API_KEY"] = openrouter_key or "missing-key"
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
 llm = LLM(
-    model=os.getenv("OPENROUTER_MODEL", "openrouter/anthropic/claude-3.5-sonnet"),
+    model=model_name,
     base_url="https://openrouter.ai/api/v1",
     api_key=openrouter_key,
     max_tokens=2048,
