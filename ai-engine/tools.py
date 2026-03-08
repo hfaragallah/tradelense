@@ -1,13 +1,15 @@
-from langchain_community.tools import DuckDuckGoSearchRun
 from crewai.tools import tool
-
-# Create a simple search tool for the Market Research agent 
-search_engine = DuckDuckGoSearchRun()
+from ddgs import DDGS
 
 @tool("Search Market Data")
 def search_tool(query: str) -> str:
     """Search the web for recent market data, news, sentiment, and crypto/stock prices."""
     try:
-        return search_engine.run(query)
+        results = DDGS().text(query, max_results=5)
+        if not results:
+            return "No recent search results found."
+        
+        combined_text = "\n".join([r.get('body', '') for r in results if r.get('body')])
+        return combined_text
     except Exception as e:
         return f"Error performing search: {e}"
