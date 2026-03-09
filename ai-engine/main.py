@@ -47,12 +47,14 @@ async def health():
 async def test_env():
     import os
     from agents import model_name
-    key = os.getenv("OPENROUTER_API_KEY")
-    masked_key = f"{key[:4]}...{key[-4:]}" if key and len(key) > 8 else "NOT SET"
+    key = os.getenv("OPENROUTER_API_KEY", "")
+    key_clean = key.strip().strip("'").strip('"')
+    masked_key = f"{key_clean[:4]}...{key_clean[-4:]}" if len(key_clean) > 8 else "NOT SET"
     return {
         "model": model_name,
-        "api_key_status": "Set" if key else "Missing",
+        "api_key_status": "Set" if key_clean else "Missing",
         "api_key_masked": masked_key,
+        "api_key_length": len(key_clean),
         "environment": "Production" if os.getenv("RENDER") else "Development"
     }
 
