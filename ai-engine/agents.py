@@ -14,7 +14,14 @@ else:
 # Configure OpenRouter via LiteLLM
 raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
-model_name = os.getenv("OPENROUTER_MODEL", "openai/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
+raw_model = os.getenv("OPENROUTER_MODEL", "openrouter/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
+
+# Ensure we use LiteLLM's explicit 'openrouter/' prefix, rather than 'openai/' 
+# which causes "OpenAIException - User not found" on some server environments.
+if raw_model.startswith("openai/"):
+    model_name = raw_model.replace("openai/", "openrouter/", 1)
+else:
+    model_name = raw_model
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
@@ -26,11 +33,18 @@ else:
 os.environ["OPENAI_API_KEY"] = openrouter_key or "missing-key"
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
+# Add standard OpenRouter headers to avoid server IP blocks
+extra_headers = {
+    "HTTP-Referer": "https://tradelense.netlify.app",
+    "X-Title": "TradeLense AI"
+}
+
 llm = LLM(
     model=model_name,
     base_url="https://openrouter.ai/api/v1",
     api_key=openrouter_key,
     max_tokens=2048,
+    extra_headers=extra_headers
 )
 
 def get_intelligence_analyst():
