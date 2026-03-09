@@ -34,7 +34,10 @@ export interface CrewAIReport {
 
 export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> => {
     try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/analyze`, {
+        const fetchUrl = `${AI_BACKEND_URL}/api/analyze`;
+        console.log(`📡 [AI Engine] Attempting to connect to: ${fetchUrl}`);
+
+        const response = await fetch(fetchUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -43,7 +46,7 @@ export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> 
         });
 
         if (!response.ok) {
-            throw new Error(`AI Backend returned ${response.status}`);
+            throw new Error(`AI Backend returned ${response.status} - please check the backend terminal logs.`);
         }
 
         const data = await response.json();
@@ -55,7 +58,12 @@ export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> 
         return parsedReport;
 
     } catch (error: any) {
-        console.error("CrewAI Analysis failed:", error);
+        console.error("❌ CrewAI Analysis failed:", error.message || error);
+
+        if (error.message && error.message.includes('Failed to fetch')) {
+            throw new Error(`Cannot connect to the AI Backend (${AI_BACKEND_URL || 'Local Path'}). If checking online, ensure you set the VITE_AI_BACKEND_URL in Netlify. If checking locally, ensure Uvicorn is running.`);
+        }
+
         throw error;
     }
 };
