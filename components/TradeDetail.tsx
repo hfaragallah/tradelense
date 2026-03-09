@@ -50,15 +50,12 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
       return;
     }
 
-    if (!onDeductPoints(ANALYSIS_COST)) {
-      setErrorAi(`Insufficient points. You need ${ANALYSIS_COST} points to run an AI analysis.`);
-      return;
-    }
-
     setLoadingAi(true);
     setErrorAi(null);
     try {
       const result = await analyzeTradeWithCrew(trade);
+      // Deduct points ONLY if the report generates successfully
+      onDeductPoints(ANALYSIS_COST);
       setAiAnalysis(result);
     } catch (err: any) {
       setErrorAi(err.message || "Analysis service unavailable. Please try again later.");
