@@ -12,8 +12,9 @@ else:
     print("DEBUG: No local .env found, using system environment variables")
 
 # Configure OpenRouter via LiteLLM
-openrouter_key = os.getenv("OPENROUTER_API_KEY")
-model_name = os.getenv("OPENROUTER_MODEL", "openai/google/gemini-2.0-flash-001")
+raw_key = os.getenv("OPENROUTER_API_KEY", "")
+openrouter_key = raw_key.strip().strip("'").strip('"')
+model_name = os.getenv("OPENROUTER_MODEL", "openai/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
