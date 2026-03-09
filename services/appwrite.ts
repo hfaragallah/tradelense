@@ -283,6 +283,24 @@ export async function createProfile(profileData) {
     }
 }
 
+export async function updateProfile(userId, updates) {
+    try {
+        const profile = await getProfile(userId);
+        if (profile) {
+            return await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.PROFILES,
+                profile.$id,
+                updates
+            );
+        }
+        return null;
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+    }
+}
+
 // Feedback functions
 export async function createFeedback(feedbackData) {
     try {

@@ -20,7 +20,7 @@ import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MO
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile, createProfile } from '../services/appwrite';
+import { getProfile, createProfile, updateProfile } from '../services/appwrite';
 import { initGA, logPageView } from '../services/analytics';
 import { SEO } from '../components/SEO';
 
@@ -506,11 +506,6 @@ const Dashboard: React.FC = () => {
 
   // Sync Auth State with App State
   useEffect(() => {
-    // DEBUG: Force Mock Profile for AI Testing
-    setIsGuest(false);
-    setUserProfile(MOCK_PROFILE);
-
-    /*
     if (user && user.$id && user.email) {
       setIsGuest(false);
       // Fetch or Create Profile
@@ -579,7 +574,6 @@ const Dashboard: React.FC = () => {
       setIsGuest(true);
       setUserProfile(null);
     }
-    */
   }, [user]);
   const [isDiscussionModalOpen, setIsDiscussionModalOpen] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
@@ -639,7 +633,12 @@ const Dashboard: React.FC = () => {
   // Points Management
   const handleDeductPoints = (amount: number): boolean => {
     if (userProfile && userProfile.points >= amount) {
-      setUserProfile(prev => prev ? ({ ...prev, points: prev.points - amount }) : null);
+      const newPoints = userProfile.points - amount;
+      setUserProfile((prev) => prev ? ({ ...prev, points: newPoints }) : null);
+      // Sync with Appwrite
+      if (user?.$id) {
+        updateProfile(user.$id, { points: newPoints }).catch(console.error);
+      }
       return true;
     }
     return false;
@@ -647,7 +646,12 @@ const Dashboard: React.FC = () => {
 
   const handlePurchasePoints = (pkg: PremiumPackage) => {
     if (userProfile) {
-      setUserProfile(prev => prev ? ({ ...prev, points: prev.points + pkg.points }) : null);
+      const newPoints = userProfile.points + pkg.points;
+      setUserProfile((prev) => prev ? ({ ...prev, points: newPoints }) : null);
+      // Sync with Appwrite
+      if (user?.$id) {
+        updateProfile(user.$id, { points: newPoints }).catch(console.error);
+      }
       setIsPremiumModalOpen(false);
     }
   };
