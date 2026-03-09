@@ -30,7 +30,9 @@ else:
     print(f"DEBUG: Using Model: {model_name}")
     print(f"DEBUG: API Key detected (Masked): {masked_key}")
 
+# Force override all litellm environments with the stripped key
 os.environ["OPENAI_API_KEY"] = openrouter_key or "missing-key"
+os.environ["OPENROUTER_API_KEY"] = openrouter_key or "missing-key"
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
 # Add standard OpenRouter headers to avoid server IP blocks
