@@ -301,6 +301,57 @@ export async function updateProfile(userId, updates) {
     }
 }
 
+// --- Trade Feed Functions ---
+
+export async function createTrade(tradeData) {
+    try {
+        // Appwrite requires stringified JSON for custom object arrays (like crowd or takeProfit)
+        // If your collection schema has them as simple string arrays, ensure tradeData matches
+        const payload = {
+            ...tradeData,
+            takeProfit: tradeData.takeProfit ? tradeData.takeProfit.map(String) : [],
+            entryRange: tradeData.entryRange ? tradeData.entryRange.map(String) : [],
+            crowd: tradeData.crowd ? JSON.stringify(tradeData.crowd) : null
+        };
+
+        return await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.TRADES,
+            ID.unique(),
+            payload
+        );
+    } catch (error) {
+        console.error('Error creating trade in Appwrite:', error);
+        throw error;
+    }
+}
+
+export async function getTrades() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.TRADES,
+            [
+                Query.orderDesc('$createdAt'),
+                Query.limit(50)
+            ]
+        );
+
+        // Map back from Appwrite string arrays to your Trade interface types
+        return response.documents.map(doc => ({
+            ...doc,
+            id: doc.$id,
+            takeProfit: doc.takeProfit ? doc.takeProfit.map(Number) : [],
+            entryRange: doc.entryRange ? doc.entryRange.map(Number) : [],
+            crowd: doc.crowd && typeof doc.crowd === 'string' ? JSON.parse(doc.crowd) : { agree: 0, disagree: 0, wait: 0, totalVotes: 0 },
+            timestamp: doc.$createdAt,
+        }));
+    } catch (error) {
+        console.error('Error fetching trades from Appwrite:', error);
+        return [];
+    }
+}
+
 // Feedback functions
 export async function createFeedback(feedbackData) {
     try {

@@ -20,7 +20,7 @@ import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MO
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile, createProfile, updateProfile } from '../services/appwrite';
+import { getProfile, createProfile, updateProfile, getTrades, createTrade as appwriteCreateTrade } from '../services/appwrite';
 import { initGA, logPageView } from '../services/analytics';
 import { SEO } from '../components/SEO';
 
@@ -504,6 +504,25 @@ const Dashboard: React.FC = () => {
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
+  // Fetch Trades from Appwrite
+  useEffect(() => {
+    const fetchTrades = async () => {
+      try {
+        const fetchedTrades = await getTrades();
+        if (fetchedTrades && fetchedTrades.length > 0) {
+          // You may still want to keep some mock trades at the end if the DB is empty
+          // but we will prioritize the real ones:
+          setTrades(fetchedTrades as unknown as Trade[]);
+        } else {
+          setTrades(MOCK_TRADES);
+        }
+      } catch (err) {
+        console.error("Failed to fetch trades:", err);
+      }
+    };
+    fetchTrades();
+  }, []);
+
   // Sync Auth State with App State
   useEffect(() => {
     if (user && user.$id && user.email) {
@@ -767,7 +786,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCreateTrade = (tradeData: Omit<Trade, 'id' | 'timestamp' | 'confidenceScore' | 'crowd'>) => {
-    requireAuth(() => {
+    requireAuth(async () => {
       const newTrade: Trade = {
         ...tradeData,
         id: `t${Date.now()}`,
@@ -780,7 +799,33 @@ const Dashboard: React.FC = () => {
           totalVotes: 0
         }
       };
+
+      // Optimistically update UI
       setTrades([newTrade, ...trades]);
+
+      // Save to Appwrite
+      try {
+        // Prepare data for appwrite schema (you might need to ensure the schema matches)
+        const appwriteData = {
+          asset: newTrade.asset,
+          market: newTrade.market,
+          type: newTrade.type,
+          entryRange: newTrade.entryRange,
+          stopLoss: newTrade.stopLoss,
+          takeProfit: newTrade.takeProfit,
+          timeHorizon: newTrade.timeHorizon,
+          rationale: newTrade.rationale,
+          rationaleTags: newTrade.rationaleTags,
+          authorName: newTrade.authorName,
+          authorId: newTrade.authorId,
+          authorReputation: newTrade.authorReputation,
+          confidenceScore: newTrade.confidenceScore,
+          crowd: newTrade.crowd,
+        };
+        await appwriteCreateTrade(appwriteData);
+      } catch (err) {
+        console.error("Failed to save trade to Appwrite:", err);
+      }
     });
   };
 
