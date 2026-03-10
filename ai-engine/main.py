@@ -15,6 +15,10 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "https://traderlense.com",
     "https://www.traderlense.com",
+    "https://tradelense.com",
+    "https://www.tradelense.com",
+    "https://tradelense.app",
+    "https://www.tradelense.app",
     "https://tradelens.app",
     "https://www.tradelens.app",
 ]
@@ -22,7 +26,7 @@ allowed_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.netlify\.app", # allow all Netlify previews
+    allow_origin_regex=r".*", # Dynamically allow all origins (fixes Netlify custom domain CORS errors)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
