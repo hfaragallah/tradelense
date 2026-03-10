@@ -2,13 +2,6 @@
   command = "npm run build"
   publish = "dist"
 
-# Proxy API requests directly to Render Backend (Bypasses Adblockers/CORS completely)
-[[redirects]]
-  from = "/api/*"
-  to = "https://tradelense.onrender.com/api/:splat"
-  status = 200
-  force = true
-
 # Redirect all routes to index.html for React Router SPA
 [[redirects]]
   from = "/*"

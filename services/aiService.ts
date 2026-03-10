@@ -1,7 +1,9 @@
 import { Trade } from "../types";
 
 // In development: Vite proxy routes /api → http://127.0.0.1:8000
-// In production (Netlify): netlify.toml proxy routes /api → Render backend
+// In production (Netlify): VITE_AI_BACKEND_URL must be set to the deployed backend URL (e.g. Render)
+const rawUrl = import.meta.env.VITE_AI_BACKEND_URL || "";
+const AI_BACKEND_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl || "http://127.0.0.1:8000";
 
 export interface CrewAIReport {
     expertIntro: string;
@@ -32,8 +34,8 @@ export interface CrewAIReport {
 
 export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> => {
     try {
-        const fetchUrl = `/api/analyze`;
-        console.log(`📡 [AI Engine] Sending request via proxy to: ${fetchUrl}`);
+        const fetchUrl = `${AI_BACKEND_URL}/api/analyze`;
+        console.log(`📡 [AI Engine] Attempting to connect directly to: ${fetchUrl}`);
 
         const response = await fetch(fetchUrl, {
             method: "POST",
@@ -59,7 +61,7 @@ export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> 
         console.error("❌ CrewAI Analysis failed:", error.message || error);
 
         if (error.message && error.message.includes('Failed to fetch')) {
-            throw new Error(`Connection blocked. This usually happens if you are using an ad-blocker (like Brave Shields or uBlock Origin) that blocked the background AI API request. Please try disabling it.`);
+            throw new Error(`Connection blocked or Timeout. If checking online, ensure VITE_AI_BACKEND_URL is set in Netlify without trailing slash. If you have an ad-blocker, disable it.`);
         }
 
         throw error;
