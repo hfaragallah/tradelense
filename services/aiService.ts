@@ -34,7 +34,7 @@ export interface CrewAIReport {
 
 export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> => {
     try {
-        const fetchUrl = `${AI_BACKEND_URL}/api/analyze`;
+        const fetchUrl = `${AI_BACKEND_URL}/api/generate-report`;
         console.log(`📡 [AI Engine] Attempting to connect directly to: ${fetchUrl}`);
 
         const response = await fetch(fetchUrl, {

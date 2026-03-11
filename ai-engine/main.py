@@ -62,7 +62,7 @@ async def test_env():
         "environment": "Production" if os.getenv("RENDER") else "Development"
     }
 
-@app.post("/api/analyze", response_model=AnalysisResponse)
+@app.post("/api/generate-report", response_model=AnalysisResponse)
 async def analyze_trade(request: AnalysisRequest):
     print(f"\n--- Recieved Analysis Request for: {request.asset} ---")
     try:
@@ -79,3 +79,4 @@ async def analyze_trade(request: AnalysisRequest):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+1234
