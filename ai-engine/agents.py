@@ -16,12 +16,13 @@ raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
 raw_model = os.getenv("OPENROUTER_MODEL", "openrouter/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
 
-# Ensure we use LiteLLM's explicit 'openrouter/' prefix, rather than 'openai/' 
-# which causes "OpenAIException - User not found" on some server environments.
-if raw_model.startswith("openai/"):
-    model_name = raw_model.replace("openai/", "openrouter/", 1)
+# Ensure we use LiteLLM's 'openai/' prefix to treat OpenRouter as an OpenAI-compatible endpoint.
+# This prevents LiteLLM from attempting to use native providers or its own internal OpenRouter logic
+# which can conflict with the custom base_url and extra_headers.
+if raw_model.startswith("openrouter/"):
+    model_name = raw_model.replace("openrouter/", "openai/", 1)
 else:
-    model_name = raw_model
+    model_name = f"openai/{raw_model}" if not raw_model.startswith("openai/") else raw_model
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
