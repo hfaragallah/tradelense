@@ -1,9 +1,7 @@
 import { Trade } from "../types";
 
-// In development: Vite proxy routes /api → http://127.0.0.1:8000
-// In production (Netlify): VITE_AI_BACKEND_URL must be set to the deployed backend URL (e.g. Render)
-const rawUrl = import.meta.env.VITE_AI_BACKEND_URL || "";
-const AI_BACKEND_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl || "http://127.0.0.1:8000";
+// Environment variable check - MUST use import.meta.env for Vite
+const BACKEND_BASE_URL = import.meta.env.VITE_AI_BACKEND_URL;
 
 export interface CrewAIReport {
     expertIntro: string;
@@ -33,38 +31,58 @@ export interface CrewAIReport {
 }
 
 export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> => {
+    // 1. URL Construction (No fallback as per instructions)
+    const baseUrl = (BACKEND_BASE_URL || "").replace(/\/$/, "");
+    const fetchUrl = `${baseUrl}/analyze`;
+
+    console.log("📡 [AI Engine] API_URL:", fetchUrl);
+
+    // 2. Timeout Handling (e.g., 60 seconds for CrewAI)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+
     try {
-        const fetchUrl = `${AI_BACKEND_URL}/api/generate-report`;
-        console.log(`📡 [AI Engine] Attempting to connect directly to: ${fetchUrl}`);
+        if (!baseUrl) {
+            throw new Error("VITE_AI_BACKEND_URL is not defined in environment variables.");
+        }
 
         const response = await fetch(fetchUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 asset: `${trade.asset} (${trade.market}) - Time Horizon: ${trade.timeHorizon} - Bias: ${trade.type} - Rationale: ${trade.rationale}`
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            throw new Error(`AI Backend returned ${response.status} - please check the backend terminal logs.`);
+            const errorText = await response.text();
+            console.error(`❌ AI Backend Error (${response.status}):`, errorText);
+            throw new Error(`AI Backend returned ${response.status}: ${errorText || 'Internal Server Error'}`);
         }
 
         const data = await response.json();
         const rawReport = data.report || "";
-        console.log("Raw AI Report from Backend:", rawReport);
+        console.log("✅ Raw AI Report Recieved:", rawReport.substring(0, 100) + "...");
 
         const parsedReport = parseReport(rawReport);
-        console.log("Parsed AI Report:", parsedReport);
         return parsedReport;
 
     } catch (error: any) {
-        console.error("❌ CrewAI Analysis failed:", error.message || error);
+        clearTimeout(timeoutId);
 
-        if (error.message && error.message.includes('Failed to fetch')) {
-            throw new Error(`Connection blocked or Timeout. If checking online, ensure VITE_AI_BACKEND_URL is set in Netlify without trailing slash. If you have an ad-blocker, disable it.`);
+        if (error.name === 'AbortError') {
+            console.error("❌ AI Analysis Timeout after 90 seconds");
+            throw new Error("Analysis timed out. The AI engine is taking too long to respond. Please try again.");
         }
 
-        throw error;
+        console.error("❌ CrewAI Analysis failed:", error);
+
+        // Detailed error reporting
+        const errorMessage = error.message || "Unknown connection error";
+        throw new Error(`AI Service Unavailable: ${errorMessage}. Check console for details.`);
     }
 };
 
