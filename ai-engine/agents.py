@@ -16,13 +16,16 @@ raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
 raw_model = os.getenv("OPENROUTER_MODEL", "openrouter/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
 
-# Ensure we use LiteLLM's 'openai/' prefix to treat OpenRouter as an OpenAI-compatible endpoint.
-# This prevents LiteLLM from attempting to use native providers or its own internal OpenRouter logic
-# which can conflict with the custom base_url and extra_headers.
-if raw_model.startswith("openrouter/"):
-    model_name = raw_model.replace("openrouter/", "openai/", 1)
+# Ensure we use LiteLLM's explicit 'openrouter/' prefix.
+# Using 'openai/' prefix with OpenRouter's base_url often causes "OpenAIException - User not found"
+# on server environments like Render.com because LiteLLM's OpenAI provider logic
+# doesn't always handle the OpenRouter-specific auth/headers correctly.
+if raw_model.startswith("openai/"):
+    model_name = raw_model.replace("openai/", "openrouter/", 1)
+elif not raw_model.startswith("openrouter/"):
+    model_name = f"openrouter/{raw_model}"
 else:
-    model_name = f"openai/{raw_model}" if not raw_model.startswith("openai/") else raw_model
+    model_name = raw_model
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
@@ -31,10 +34,15 @@ else:
     print(f"DEBUG: Using Model: {model_name}")
     print(f"DEBUG: API Key detected (Masked): {masked_key}")
 
-# Force override all litellm environments with the stripped key
-os.environ["OPENAI_API_KEY"] = openrouter_key or "missing-key"
-os.environ["OPENROUTER_API_KEY"] = openrouter_key or "missing-key"
-os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
+# Force LiteLLM to use the correct key for the OpenRouter provider
+os.environ["OPENROUTER_API_KEY"] = openrouter_key or ""
+
+# We remove the forced OpenAI overrides to prevent confusion in LiteLLM's routing
+# This ensures that when we use 'openrouter/' prefix, LiteLLM doesn't try to use
+# any existing OpenAI credentials or base URLs.
+for key in ["OPENAI_API_BASE", "OPENAI_API_KEY"]:
+    if key in os.environ:
+        del os.environ[key]
 
 # Add standard OpenRouter headers to avoid server IP blocks
 extra_headers = {
