@@ -1,5 +1,5 @@
 from crewai.tools import tool
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 @tool("Search Market Data")
 def search_tool(query: str) -> str:
