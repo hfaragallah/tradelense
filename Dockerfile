@@ -1,5 +1,5 @@
 # Build stage
-FROM oven/bun:latest AS builder
+FROM node:18-slim AS builder
 
 ARG VITE_GEMINI_API_KEY
 ARG VITE_AI_BACKEND_URL
@@ -14,10 +14,10 @@ ENV VITE_APPWRITE_PROJECT_ID=$VITE_APPWRITE_PROJECT_ID
 ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
 
 WORKDIR /app
-COPY package.json bun.lockb* package-lock.json* ./
-RUN if [ -f bun.lockb ]; then bun install; else npm install; fi
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
 COPY . .
-RUN bun run build || npm run build
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine
