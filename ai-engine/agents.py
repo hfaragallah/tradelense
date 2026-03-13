@@ -14,18 +14,9 @@ else:
 # Configure OpenRouter via LiteLLM
 raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
-raw_model = os.getenv("OPENROUTER_MODEL", "openrouter/google/gemini-2.0-flash-001").strip().strip("'").strip('"')
+model_name = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001").strip().strip("'").strip('"')
+large_model_name = os.getenv("OPENROUTER_LARGE_MODEL", "google/gemini-2.0-flash-001").strip().strip("'").strip('"')
 
-# Ensure we use LiteLLM's explicit 'openrouter/' prefix.
-# Using 'openai/' prefix with OpenRouter's base_url often causes "OpenAIException - User not found"
-# on server environments like Render.com because LiteLLM's OpenAI provider logic
-# doesn't always handle the OpenRouter-specific auth/headers correctly.
-if raw_model.startswith("openai/"):
-    model_name = raw_model.replace("openai/", "openrouter/", 1)
-elif not raw_model.startswith("openrouter/"):
-    model_name = f"openrouter/{raw_model}"
-else:
-    model_name = raw_model
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
@@ -50,13 +41,15 @@ extra_headers = {
     "X-Title": "TradeLense AI"
 }
 
-llm = LLM(
-    model=model_name,
-    base_url="https://openrouter.ai/api/v1",
-    api_key=openrouter_key,
-    max_tokens=2048,
-    extra_headers=extra_headers
-)
+def get_llm(model=model_name):
+    return LLM(
+        model=model,
+        base_url="https://openrouter.ai/api/v1",
+        api_key=openrouter_key,
+        max_tokens=2048,
+        extra_headers=extra_headers
+    )
+
 
 def get_intelligence_analyst():
     """Combines Research, Data Aggregation, and Technical Analysis."""
@@ -69,7 +62,7 @@ def get_intelligence_analyst():
         verbose=True,
         allow_delegation=False,
         tools=[search_tool],
-        llm=llm
+        llm=get_llm(large_model_name)
     )
 
 def get_risk_manager_agent():
@@ -82,7 +75,7 @@ def get_risk_manager_agent():
                   "Your word is final on whether a trade is ENTER, WAIT, or AVOID.",
         verbose=True,
         allow_delegation=False,
-        llm=llm
+        llm=get_llm()
     )
 
 def get_final_advisor_agent():
@@ -94,5 +87,5 @@ def get_final_advisor_agent():
                   "You ensure the report is concise, free of contradictions, and follows the strict markdown format required by the UI.",
         verbose=True,
         allow_delegation=False,
-        llm=llm
+        llm=get_llm(large_model_name)
     )
