@@ -20,9 +20,12 @@ const LandingPage: React.FC = () => {
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">
                                 TL
                             </div>
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                                TraderLense
-                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                    TraderLense
+                                </span>
+                                <span className="text-[10px] font-black bg-status-neutral/10 text-status-neutral px-1.5 py-0.5 rounded border border-status-neutral/20">BETA</span>
+                            </div>
                         </div>
                         <div className="hidden md:block">
                             <div className="ml-10 flex items-baseline space-x-8">
@@ -47,7 +50,7 @@ const LandingPage: React.FC = () => {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-status-neutral/10 border border-status-neutral/20 text-status-neutral text-xs font-bold mb-6 animate-fade-in">
                             <Zap size={12} />
-                            <span>Now with AI Bias Detection</span>
+                            <span>Open Beta - Now with AI Bias Detection</span>
                         </div>
 
                         <h1 className="text-5xl md:text-7xl font-black text-text-primary tracking-tight mb-8 leading-tight">
@@ -161,7 +164,7 @@ const LandingPage: React.FC = () => {
                             <a href="#" className="hover:text-text-primary">Terms</a>
                             <a href="#" className="hover:text-text-primary">Privacy</a>
                         </div>
-                        <p>© 2024 TraderLense. All rights reserved.</p>
+                        <p>© 2024 TraderLense (Beta Version). All rights reserved.</p>
                     </div>
                 </footer>
             </main>

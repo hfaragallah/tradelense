@@ -97,11 +97,14 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* Logo & Search */}
           <div className="flex items-center gap-4 md:gap-8 flex-1">
             <div
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-pointer group"
               onClick={() => handleNavClick('feed')}
             >
               <img src="/logo.svg" alt="TraderLense" className="w-8 h-8" />
-              <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TraderLense</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="hidden md:block text-xl font-bold tracking-tight text-text-primary">TraderLense</span>
+                <span className="text-[10px] font-black bg-status-neutral/10 text-status-neutral px-1.5 py-0.5 rounded border border-status-neutral/20 shadow-sm shadow-blue-900/10">BETA</span>
+              </div>
             </div>
 
             <button

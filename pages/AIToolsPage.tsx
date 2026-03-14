@@ -21,7 +21,10 @@ const AIToolsPage: React.FC = () => {
                         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center mx-auto mb-6 text-purple-400">
                             <Cpu size={32} />
                         </div>
-                        <h1 className="text-4xl font-bold mb-4">AI Trading Suite</h1>
+                        <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
+                            AI Trading Suite
+                            <span className="text-xs font-black bg-status-neutral/10 text-status-neutral px-2 py-1 rounded-md border border-status-neutral/20">BETA</span>
+                        </h1>
                         <p className="text-text-secondary text-lg max-w-2xl mx-auto">
                             Unlock the power of artificial intelligence to analyze your trading psychology and market conditions.
                         </p>
