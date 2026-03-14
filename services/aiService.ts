@@ -89,8 +89,7 @@ export const analyzeTradeWithCrew = async (trade: Trade): Promise<CrewAIReport> 
 const parseReport = (reportText: string): CrewAIReport => {
     // Strip markdown code blocks if the AI wrapped the response
     let cleanedText = reportText
-        .replace(/^```markdown\n?/, '')
-        .replace(/^```\n?/, '')
+        .replace(/^```(markdown|json)?\n?/, '')
         .replace(/\n?```$/, '')
         .trim();
 
@@ -112,93 +111,78 @@ const parseReport = (reportText: string): CrewAIReport => {
         rawReport: reportText
     };
 
-    const lines = cleanedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    let currentSection = "";
-    let setupLines: string[] = [];
-    let scenarioSubSection = "";
+    // Helper to clean headers and find sections
+    const getSectionContent = (text: string, sectionName: string, nextSections: string[]): string => {
+        const escapedSection = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match headers like "Expert Intro", "### Expert Intro", "**Expert Intro**", etc.
+        const sectionRegex = new RegExp(`(?:^|\\n)[#\\s\\*]*${escapedSection}[#\\s\\*\\:]*\\n?([\\s\\S]*?)(?=\\n[#\\s\\*]*(?:${nextSections.join('|')})|$)`, 'i');
+        const match = text.match(sectionRegex);
+        return match ? match[1].trim() : "";
+    };
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+    const headers = [
+        "Expert Intro",
+        "Strategic Decision",
+        "Recommended Trade Setup",
+        "Scenario Explanation",
+        "Risk & Discipline Protocol",
+        "Action Protocol"
+    ];
 
-        // --- Section detection ---
-        if (line === "Expert Intro" || line.startsWith("Expert Intro")) {
-            currentSection = "expert_intro";
-            continue;
-        } else if (line === "Strategic Decision" || line.startsWith("Strategic Decision")) {
-            currentSection = "strategic_decision";
-            continue;
-        } else if (line === "Recommended Trade Setup" || line.startsWith("Recommended Trade Setup")) {
-            currentSection = "trade_setup";
-            setupLines = [];
-            continue;
-        } else if (line === "Scenario Explanation" || line.startsWith("Scenario Explanation")) {
-            // Finalize setup section if lines were buffered
-            if (setupLines.length > 0) {
-                report.tradeSetup = parseSetupLines(setupLines);
-            }
-            currentSection = "scenarios";
-            scenarioSubSection = "";
-            continue;
-        } else if (line === "Risk & Discipline Protocol" || line.startsWith("Risk & Discipline Protocol") || line.includes("Risk & Discipline")) {
-            currentSection = "risk_discipline";
-            continue;
-        } else if (line === "Action Protocol" || line.startsWith("Action Protocol")) {
-            currentSection = "action_protocol";
-            continue;
+    // 1. Expert Intro
+    report.expertIntro = getSectionContent(cleanedText, "Expert Intro", headers.slice(1));
+
+    // 2. Strategic Decision
+    const decisionContent = getSectionContent(cleanedText, "Strategic Decision", headers.slice(2));
+    if (decisionContent) {
+        const decisionMatch = decisionContent.match(/Decision:\s*(\w+)/i);
+        if (decisionMatch) {
+            const dec = decisionMatch[1].toUpperCase();
+            if (dec.includes("ENTER")) report.strategicDecision.decision = "ENTER";
+            else if (dec.includes("AVOID")) report.strategicDecision.decision = "AVOID";
+            else report.strategicDecision.decision = "WAIT";
         }
+        const confidenceMatch = decisionContent.match(/Confidence:\s*(\d+)%/i);
+        if (confidenceMatch) report.strategicDecision.confidenceScore = parseInt(confidenceMatch[1], 10);
 
-        // --- Sub-section detection for scenarios ---
-        if (currentSection === "scenarios") {
-            if (line.includes("Scenario 1") || line.includes("Expected Move")) {
-                scenarioSubSection = "expected";
-                continue;
-            } else if (line.includes("Scenario 2") || line.includes("Alternative Move")) {
-                scenarioSubSection = "alternative";
-                continue;
-            } else if (line.includes("Scenario 3") || line.includes("Sideways")) {
-                scenarioSubSection = "sideways";
-                continue;
-            }
-        }
-
-        // --- Content parsing ---
-        if (currentSection === "expert_intro") {
-            report.expertIntro += (report.expertIntro ? " " : "") + line;
-
-        } else if (currentSection === "strategic_decision") {
-            if (line.startsWith("Decision:")) {
-                const dec = line.split("Decision:")[1].trim().toUpperCase();
-                if (dec.includes("ENTER")) report.strategicDecision.decision = "ENTER";
-                else if (dec.includes("AVOID")) report.strategicDecision.decision = "AVOID";
-                else report.strategicDecision.decision = "WAIT";
-            } else if (line.startsWith("Confidence:")) {
-                const scoreMatch = line.match(/\d+/);
-                if (scoreMatch) report.strategicDecision.confidenceScore = parseInt(scoreMatch[0], 10);
-            } else if (line.startsWith("Market Bias:")) {
-                const bias = line.split("Market Bias:")[1].trim();
-                report.strategicDecision.marketBias = bias;
-            }
-
-        } else if (currentSection === "trade_setup") {
-            setupLines.push(line);
-
-        } else if (currentSection === "scenarios") {
-            if (scenarioSubSection === "expected") {
-                report.scenarios.expected += (report.scenarios.expected ? " " : "") + line;
-            } else if (scenarioSubSection === "alternative") {
-                report.scenarios.alternative += (report.scenarios.alternative ? " " : "") + line;
-            } else if (scenarioSubSection === "sideways") {
-                report.scenarios.sideways += (report.scenarios.sideways ? " " : "") + line;
-            }
-
-        } else if (currentSection === "risk_discipline") {
-            const cleaned = line.replace(/^[-*•\d.]+\s*/, "").trim();
-            if (cleaned) report.riskDiscipline.push(cleaned);
-
-        } else if (currentSection === "action_protocol") {
-            report.actionProtocol += (report.actionProtocol ? " " : "") + line;
-        }
+        const biasMatch = decisionContent.match(/Market Bias:\s*([\w\s]+)/i);
+        if (biasMatch) report.strategicDecision.marketBias = biasMatch[1].trim();
     }
+
+    // 3. Recommended Trade Setup
+    const setupContent = getSectionContent(cleanedText, "Recommended Trade Setup", headers.slice(3));
+    if (setupContent) {
+        const setupLines = setupContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        report.tradeSetup = parseSetupLines(setupLines);
+    }
+
+    // 4. Scenario Explanation
+    const scenarioContent = getSectionContent(cleanedText, "Scenario Explanation", headers.slice(4));
+    if (scenarioContent) {
+        const expectedRegex = /(?:Scenario 1|Expected Move)[#\s\*\-\:]*([\s\S]*?)(?=\n(?:Scenario 2|Alternative Move|Scenario 3|Sideways Market)|$)/i;
+        const alternativeRegex = /(?:Scenario 2|Alternative Move)[#\s\*\-\:]*([\s\S]*?)(?=\n(?:Scenario 3|Sideways Market)|$)/i;
+        const sidewaysRegex = /(?:Scenario 3|Sideways Market)[#\s\*\-\:]*([\s\S]*?)$/i;
+
+        const expectedMatch = scenarioContent.match(expectedRegex);
+        const alternativeMatch = scenarioContent.match(alternativeRegex);
+        const sidewaysMatch = scenarioContent.match(sidewaysRegex);
+
+        if (expectedMatch) report.scenarios.expected = expectedMatch[1].trim().replace(/^[#\s\*\-\:]+/, '');
+        if (alternativeMatch) report.scenarios.alternative = alternativeMatch[1].trim().replace(/^[#\s\*\-\:]+/, '');
+        if (sidewaysMatch) report.scenarios.sideways = sidewaysMatch[1].trim().replace(/^[#\s\*\-\:]+/, '');
+    }
+
+    // 5. Risk & Discipline Protocol
+    const riskContent = getSectionContent(cleanedText, "Risk & Discipline Protocol", headers.slice(5));
+    if (riskContent) {
+        report.riskDiscipline = riskContent
+            .split('\n')
+            .map(l => l.trim().replace(/^[-*•\d.]+\s*/, ""))
+            .filter(l => l.length > 0);
+    }
+
+    // 6. Action Protocol
+    report.actionProtocol = getSectionContent(cleanedText, "Action Protocol", []);
 
     // Fallbacks
     if (!report.expertIntro) report.expertIntro = "Market analysis complete. Review the setup carefully before acting.";

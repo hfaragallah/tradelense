@@ -14,26 +14,30 @@ else:
 # Configure OpenRouter via LiteLLM
 raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
-model_name = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001").strip().strip("'").strip('"')
-large_model_name = os.getenv("OPENROUTER_LARGE_MODEL", "google/gemini-2.0-flash-001").strip().strip("'").strip('"')
+
+# Ensure models have the 'openrouter/' prefix for LiteLLM
+def format_model(m):
+    m = m.strip().strip("'").strip('"')
+    if m and not m.startswith("openrouter/"):
+        return f"openrouter/{m}"
+    return m
+
+model_name = format_model(os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001"))
+large_model_name = format_model(os.getenv("OPENROUTER_LARGE_MODEL", "google/gemini-2.0-flash-001"))
 
 
 if not openrouter_key:
-    print("CRITICAL: OPENROUTER_API_KEY is not set in environment!")
+    print("CRITICAL: OPENROUTER_API_KEY is not set in environment or is empty!")
 else:
-    masked_key = f"{openrouter_key[:4]}...{openrouter_key[-4:]}" if len(openrouter_key) > 8 else "***"
-    print(f"DEBUG: Using Model: {model_name}")
-    print(f"DEBUG: API Key detected (Masked): {masked_key}")
+    masked_key = f"{openrouter_key[:6]}...{openrouter_key[-6:]}" if len(openrouter_key) > 12 else "***"
+    print(f"DEBUG: OPENROUTER_API_KEY detected. Length: {len(openrouter_key)}")
+    print(f"DEBUG: Key Masked: {masked_key}")
+    print(f"DEBUG: Model Name: {model_name}")
+    print(f"DEBUG: Large Model: {large_model_name}")
 
 # Force LiteLLM to use the correct key for the OpenRouter provider
 os.environ["OPENROUTER_API_KEY"] = openrouter_key or ""
-
-# We remove the forced OpenAI overrides to prevent confusion in LiteLLM's routing
-# This ensures that when we use 'openrouter/' prefix, LiteLLM doesn't try to use
-# any existing OpenAI credentials or base URLs.
-for key in ["OPENAI_API_BASE", "OPENAI_API_KEY"]:
-    if key in os.environ:
-        del os.environ[key]
+os.environ["OPENAI_API_KEY"] = openrouter_key or ""
 
 # Add standard OpenRouter headers to avoid server IP blocks
 extra_headers = {
