@@ -651,13 +651,7 @@ export const TradeDetail: React.FC<TradeDetailProps> = ({
                 </div>
               </div>
 
-              {/* Raw Report Expansion */}
-              <details className="mt-4 opacity-60 hover:opacity-100 transition-opacity">
-                <summary className="text-text-muted text-xs cursor-pointer select-none">View Raw CrewAI Output</summary>
-                <div className="mt-3 p-4 bg-surface rounded text-xs font-mono whitespace-pre-wrap text-text-secondary">
-                  {aiAnalysis.rawReport}
-                </div>
-              </details>
+
             </div>
           )}
         </section>
