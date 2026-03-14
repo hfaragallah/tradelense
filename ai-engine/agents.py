@@ -1,4 +1,5 @@
 import os
+import litellm
 from crewai import Agent, LLM
 from dotenv import load_dotenv
 from tools import search_tool
@@ -11,20 +12,25 @@ if os.path.exists(env_path):
 else:
     print("DEBUG: No local .env found, using system environment variables")
 
-# Configure OpenRouter via LiteLLM
+# 1. API Key Sanitization
 raw_key = os.getenv("OPENROUTER_API_KEY", "")
 openrouter_key = raw_key.strip().strip("'").strip('"')
 
-# Ensure models have the 'openrouter/' prefix for LiteLLM
+# 2. Model Configuration (Must use openrouter/ prefix for LiteLLM)
 def format_model(m):
     m = m.strip().strip("'").strip('"')
-    if m and not m.startswith("openrouter/"):
+    if not m:
+        return "openrouter/google/gemini-2.0-flash-001"
+    if not m.startswith("openrouter/"):
         return f"openrouter/{m}"
     return m
 
 model_name = format_model(os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001"))
 large_model_name = format_model(os.getenv("OPENROUTER_LARGE_MODEL", "google/gemini-2.0-flash-001"))
 
+# 3. LiteLLM Environment Configuration
+os.environ["OPENROUTER_API_KEY"] = openrouter_key
+os.environ["LITELLM_LOG"] = "INFO" # Helpful for debugging
 
 if not openrouter_key:
     print("CRITICAL: OPENROUTER_API_KEY is not set in environment or is empty!")
@@ -32,27 +38,46 @@ else:
     masked_key = f"{openrouter_key[:6]}...{openrouter_key[-6:]}" if len(openrouter_key) > 12 else "***"
     print(f"DEBUG: OPENROUTER_API_KEY detected. Length: {len(openrouter_key)}")
     print(f"DEBUG: Key Masked: {masked_key}")
-    print(f"DEBUG: Model Name: {model_name}")
-    print(f"DEBUG: Large Model: {large_model_name}")
+    print(f"DEBUG: Using Model: {model_name}")
 
-# Force LiteLLM to use the correct key for the OpenRouter provider
-os.environ["OPENROUTER_API_KEY"] = openrouter_key or ""
-os.environ["OPENAI_API_KEY"] = openrouter_key or ""
-
-# Add standard OpenRouter headers to avoid server IP blocks
+# Extra headers to identify the application
 extra_headers = {
     "HTTP-Referer": "https://traderlense.com",
     "X-Title": "TradeLense AI"
 }
 
 def get_llm(model=model_name):
+    """
+    Returns a CrewAI LLM configured for OpenRouter via LiteLLM.
+    """
     return LLM(
         model=model,
         base_url="https://openrouter.ai/api/v1",
         api_key=openrouter_key,
-        max_tokens=2048,
-        extra_headers=extra_headers
+        max_tokens=4096,
+        extra_headers=extra_headers,
+        timeout=120 # CrewAI tasks can be slow
     )
+
+def test_openrouter_connectivity():
+    """
+    Quickly verifies the OpenRouter API key and model access.
+    """
+    if not openrouter_key:
+        return False, "API Key is missing."
+    
+    try:
+        # Minimal test call to check authentication
+        litellm.completion(
+            model=model_name,
+            messages=[{"role": "user", "content": "ping"}],
+            api_key=openrouter_key,
+            base_url="https://openrouter.ai/api/v1",
+            max_tokens=1
+        )
+        return True, "Authentication Successful"
+    except Exception as e:
+        return False, str(e)
 
 
 def get_intelligence_analyst():

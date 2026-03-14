@@ -59,19 +59,39 @@ async def test_env():
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_trade(request: AnalysisRequest):
-    print(f"\n--- Recieved Analysis Request for: {request.asset} ---")
+    print(f"\n--- Received Analysis Request for: {request.asset} ---")
+    
+    # 1. Connectivity & Auth Test
+    from agents import test_openrouter_connectivity
+    is_ok, msg = test_openrouter_connectivity()
+    if not is_ok:
+        print(f"❌ AUTH ERROR: {msg}")
+        raise HTTPException(
+            status_code=401, 
+            detail=f"AI Authentication Failed: {msg}. Please check your OpenRouter API Key."
+        )
+
     try:
-        # Run CrewAI synchronously in a separate thread to prevent blocking FastAPI
-        print("Starting Multi-Agent Crew...")
+        # 2. Run CrewAI
+        print(f"Starting Multi-Agent Crew for {request.asset}...")
+        # Use asyncer to run the synchronous CrewAI kickoff in a thread pool
         result = await asyncer.asyncify(run_trade_lens_crew)(request.asset)
-        print("Crew Analysis Complete.")
         
-        # Ensure we return a string representation
+        # 3. Process Result
         report_str = result.raw if hasattr(result, 'raw') else str(result)
+        print("✅ Crew Analysis Complete.")
         return AnalysisResponse(report=report_str)
+
     except Exception as e:
-        print(f"ERROR in analyze_trade: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        print(f"❌ CRITICAL ERROR in /analyze: {error_msg}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500, 
+            detail=f"AI Engine Error: {error_msg}"
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
