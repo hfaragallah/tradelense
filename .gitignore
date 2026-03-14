@@ -31,3 +31,4 @@ ai-engine/venv/
 __pycache__/
 *.pyc
 ai-engine/Miniconda3-latest-MacOSX-arm64.sh
+testenv/
