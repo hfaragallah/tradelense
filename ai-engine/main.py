@@ -7,7 +7,7 @@ import asyncer
 
 app = FastAPI(title="TradeLens AI Agent Backend")
 
-# Allow requests from the Vite frontend (local) and Netlify/Custom Domains (production)
+# Allow requests from the Vite frontend (local) and Fly.io/Custom Domains (production)
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -15,12 +15,7 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "https://traderlense.com",
     "https://www.traderlense.com",
-    "https://tradelense.com",
-    "https://www.tradelense.com",
-    "https://tradelense.app",
-    "https://www.tradelense.app",
-    "https://tradelens.app",
-    "https://www.tradelens.app",
+    "https://tradelense-frontend.fly.dev",
 ]
 
 app.add_middleware(
@@ -59,7 +54,7 @@ async def test_env():
         "api_key_status": "Set" if key_clean else "Missing",
         "api_key_masked": masked_key,
         "api_key_length": len(key_clean),
-        "environment": "Production" if os.getenv("RENDER") else "Development"
+        "environment": "Production" if (os.getenv("RENDER") or os.getenv("FLY_APP_NAME")) else "Development"
     }
 
 @app.post("/analyze", response_model=AnalysisResponse)

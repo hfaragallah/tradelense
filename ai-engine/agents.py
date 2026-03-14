@@ -37,7 +37,7 @@ for key in ["OPENAI_API_BASE", "OPENAI_API_KEY"]:
 
 # Add standard OpenRouter headers to avoid server IP blocks
 extra_headers = {
-    "HTTP-Referer": "https://tradelense.netlify.app",
+    "HTTP-Referer": "https://traderlense.com",
     "X-Title": "TradeLense AI"
 }
 
