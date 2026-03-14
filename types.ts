@@ -117,6 +117,7 @@ export interface TraderProfile {
   }[];
   accuracyHistory: { date: string; accuracy: number }[];
   biasInsights?: string[];
+  trustScoreData?: TrustScoreData;
 }
 
 export interface CampaignJoiner {

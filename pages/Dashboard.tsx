@@ -493,10 +493,12 @@ const Dashboard: React.FC = () => {
   const [userVote, setUserVote] = useState<ValidationType | null>(null);
 
   // Data State
-  const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES);
-  const [discussions, setDiscussions] = useState<DiscussionPost[]>(MOCK_DISCUSSIONS);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [discussions, setDiscussions] = useState<DiscussionPost[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [users, setUsers] = useState<TraderProfile[]>([]);
 
   // Follow State
   const [followedTraders, setFollowedTraders] = useState<string[]>([]);
@@ -504,23 +506,42 @@ const Dashboard: React.FC = () => {
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Fetch Trades from Appwrite
   useEffect(() => {
-    const fetchTrades = async () => {
+    const fetchData = async () => {
       try {
-        const fetchedTrades = await getTrades();
+        const [fetchedTrades, fetchedLeaderboard] = await Promise.all([
+          getTrades(),
+          import('../services/appwrite').then(m => m.getLeaderboard())
+        ]);
+
         if (fetchedTrades && fetchedTrades.length > 0) {
-          // You may still want to keep some mock trades at the end if the DB is empty
-          // but we will prioritize the real ones:
           setTrades(fetchedTrades as unknown as Trade[]);
         } else {
-          setTrades(MOCK_TRADES);
+          setTrades([]);
+        }
+
+        if (fetchedLeaderboard && fetchedLeaderboard.length > 0) {
+          // Map Appwrite Profile to what Sidebar expects
+          const mappedLeaderboard = fetchedLeaderboard.map((u: any, idx: number) => ({
+            rank: idx + 1,
+            traderId: u.userId,
+            name: u.name || 'Anonymous',
+            reputation: u.reputationScore,
+            disciplineScore: 90, // Fallback if not in schema
+            avoidanceRate: 90
+          }));
+          setLeaderboard(mappedLeaderboard);
+          // Set users for search as well from leaderboard for now
+          setUsers(fetchedLeaderboard as unknown as TraderProfile[]);
+        } else {
+          setLeaderboard([]);
+          setUsers([]);
         }
       } catch (err) {
-        console.error("Failed to fetch trades:", err);
+        console.error("Failed to fetch data:", err);
       }
     };
-    fetchTrades();
+    fetchData();
   }, []);
 
   // Sync Auth State with App State
@@ -601,7 +622,7 @@ const Dashboard: React.FC = () => {
   // Filter & Sort State
   const [rationaleFilter, setRationaleFilter] = useState<RationaleTag | 'All'>('All');
   const [socialFilter, setSocialFilter] = useState<DiscussionTag | 'All'>('All');
-  const [sortBy, setSortBy] = useState<'rating' | 'newest' | 'discussed'>('rating');
+  const [sortBy, setSortBy] = useState<'rating' | 'newest' | 'discussed'>('newest');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   // --- Auth Handlers ---
@@ -979,8 +1000,7 @@ const Dashboard: React.FC = () => {
         ) : <div>Discussion not found</div>;
 
       case 'profile':
-        // Show the selected profile from search, or the user's own profile, or fallback to MOCK_PROFILE
-        const profileToShow = selectedProfile || userProfile || MOCK_PROFILE;
+        const profileToShow = selectedProfile || userProfile;
         return profileToShow ? (
           <Profile
             profile={profileToShow}
@@ -991,13 +1011,13 @@ const Dashboard: React.FC = () => {
 
       case 'leaderboard':
         return <Leaderboard
-          entries={MOCK_LEADERBOARD}
+          entries={leaderboard}
           followedTraders={followedTraders}
           onFollow={handleToggleFollow}
         />;
 
       case 'trust':
-        return <TrustScore data={MOCK_TRUST_DATA} />;
+        return <TrustScore data={userProfile?.trustScoreData || null} />;
 
       case 'social':
         return <SocialHub
@@ -1175,7 +1195,7 @@ const Dashboard: React.FC = () => {
 
             {filteredTrades.length === 0 ? (
               <div className="text-center py-12 text-text-muted bg-background-secondary rounded-xl border border-surface">
-                No trades found matching your filters.
+                {rationaleFilter === 'All' ? "No trades posted yet." : "No trades found matching your filters."}
               </div>
             ) : (
               <div className="grid gap-4">
@@ -1217,7 +1237,7 @@ const Dashboard: React.FC = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         trades={trades}
-        users={MOCK_USERS}
+        users={users}
         onSearchSelect={(trade) => {
           setSelectedTrade(trade);
           setCurrentView('detail');
@@ -1263,8 +1283,8 @@ const Dashboard: React.FC = () => {
           {!isFullPage && (
             <aside className="hidden lg:block lg:col-span-3">
               <RightSidebar
-                pulse={MOCK_PULSE}
-                leaderboard={MOCK_LEADERBOARD}
+                pulse={null}
+                leaderboard={leaderboard}
                 activeView={currentView}
                 profile={userProfile}
                 followedTraders={followedTraders}

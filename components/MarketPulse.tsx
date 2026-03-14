@@ -8,6 +8,15 @@ interface MarketPulseProps {
 }
 
 export const MarketPulse: React.FC<MarketPulseProps> = ({ data }) => {
+  if (!data) {
+    return (
+      <div className="bg-background-secondary border border-surface rounded-xl p-6 text-center shadow-sm">
+        <Zap size={24} className="text-text-muted mx-auto mb-2 opacity-50" />
+        <p className="text-xs text-text-muted">Market data unavailable.</p>
+      </div>
+    );
+  }
+
   const getSentimentIcon = () => {
     switch (data.sentiment) {
       case 'Greed':

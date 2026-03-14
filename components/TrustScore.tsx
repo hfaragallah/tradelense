@@ -12,9 +12,21 @@ export const TrustScore: React.FC<TrustScoreProps> = ({ data }) => {
   const [animatedScore, setAnimatedScore] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setAnimatedScore(data.totalScore), 300);
-    return () => clearTimeout(timer);
-  }, [data.totalScore]);
+    if (data?.totalScore) {
+      const timer = setTimeout(() => setAnimatedScore(data.totalScore), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [data?.totalScore]);
+
+  if (!data) {
+    return (
+      <div className="animate-fade-in max-w-7xl mx-auto px-4 py-12 text-center">
+        <ShieldCheck size={48} className="text-text-muted mx-auto mb-4 opacity-50" />
+        <h2 className="text-2xl font-bold text-text-primary mb-2">Trust Score Unavailable</h2>
+        <p className="text-text-muted">Reputation metrics will appear as you participate in the community.</p>
+      </div>
+    );
+  }
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
