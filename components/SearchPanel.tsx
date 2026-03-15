@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, TrendingUp, TrendingDown, Clock, Tag, ChevronRight, Filter } from 'lucide-react';
-import { Trade, TradeType, TimeHorizon, TraderProfile } from '../types';
+import { Trade, TradeType, TimeHorizon, TraderProfile, DiscussionPost } from '../types';
+import { MessageSquare } from 'lucide-react';
 
 interface SearchPanelProps {
     trades: Trade[];
     users: TraderProfile[];
+    discussions: DiscussionPost[];
     onSelectTrade: (trade: Trade) => void;
     onSelectUser: (user: TraderProfile) => void;
+    onSelectDiscussion: (post: DiscussionPost) => void;
     onClose: () => void;
 }
 
@@ -14,7 +17,7 @@ const MARKET_OPTIONS = ['All', 'Crypto', 'Forex', 'Shares', 'Indices', 'Metals',
 const TYPE_OPTIONS = ['All', 'LONG', 'SHORT'];
 const HORIZON_OPTIONS = ['All', ...Object.values(TimeHorizon)];
 
-export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelectTrade, onSelectUser, onClose }) => {
+export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, discussions, onSelectTrade, onSelectUser, onSelectDiscussion, onClose }) => {
     const [query, setQuery] = useState('');
     const [filterMarket, setFilterMarket] = useState('All');
     const [filterType, setFilterType] = useState('All');
@@ -55,7 +58,17 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelec
                (u.handle || '').toLowerCase().includes(q);
     });
 
-    const totalResults = tradeResults.length + userResults.length;
+    // Live filtering for discussions
+    const discussionResults = (discussions || []).filter(d => {
+        if (hasActiveFilters) return false;
+        const q = query.toLowerCase();
+        return !q ||
+               (d.title || '').toLowerCase().includes(q) ||
+               (d.content || '').toLowerCase().includes(q) ||
+               (d.authorName || '').toLowerCase().includes(q);
+    });
+
+    const totalResults = tradeResults.length + userResults.length + discussionResults.length;
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col" onClick={onClose}>
@@ -133,7 +146,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelec
                         <span className="text-xs text-text-muted font-medium">
                             {query || hasActiveFilters
                                 ? `${totalResults} result${totalResults !== 1 ? 's' : ''}`
-                                : `${trades.length} trades, ${users.length} users`}
+                                : `${(trades || []).length} trades, ${(users || []).length} users, ${(discussions || []).length} posts`}
                         </span>
                         {query && (
                             <span className="text-xs text-text-muted">
@@ -159,6 +172,17 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelec
                                     user={user}
                                     query={query}
                                     onClick={() => { onSelectUser(user); onClose(); }}
+                                />
+                            ))}
+                            {discussionResults.length > 0 && (
+                                <div className="px-5 py-2 bg-background-primary/50 text-xs font-bold text-text-muted uppercase tracking-wider">Discussions</div>
+                            )}
+                            {discussionResults.map(post => (
+                                <SearchResultDiscussionRow
+                                    key={post.id}
+                                    post={post}
+                                    query={query}
+                                    onClick={() => { onSelectDiscussion(post); onClose(); }}
                                 />
                             ))}
                             {tradeResults.length > 0 && (
@@ -330,3 +354,48 @@ function SearchResultUserRow({ user, query, onClick }: { user: TraderProfile; qu
         </button>
     );
 }
+
+// ─────────────────────────────────────────────────────────
+
+function SearchResultDiscussionRow({ post, query, onClick }: { post: DiscussionPost; query: string; onClick: () => void }) {
+    const highlight = (text: string = '') => {
+        if (!query) return text;
+        const safeText = text || '';
+        const idx = safeText.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return safeText;
+        return (
+            <>
+                {safeText.slice(0, idx)}
+                <mark className="bg-status-neutral/30 text-text-primary rounded-sm px-0.5">{safeText.slice(idx, idx + query.length)}</mark>
+                {safeText.slice(idx + query.length)}
+            </>
+        );
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-surface/40 transition-colors text-left group"
+        >
+            <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center text-purple-400 border border-surface flex-shrink-0">
+                <MessageSquare size={20} />
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-text-primary truncate">{highlight(post.title)}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-text-muted border border-surface/50 font-medium">{post.tag}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-text-muted">
+                    <span className="truncate">{highlight(post.content.slice(0, 60))}...</span>
+                </div>
+                <div className="text-[10px] text-text-muted mt-1">
+                    By {highlight(post.authorName)} • {post.commentCount} comments
+                </div>
+            </div>
+
+            <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-colors flex-shrink-0" />
+        </button>
+    );
+}
+

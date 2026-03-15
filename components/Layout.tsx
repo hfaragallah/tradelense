@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, TrendingUp, Users, Activity, ShieldCheck, Medal, MessageSquare, Search, Bell, Menu, X, LogOut, User, Settings, Plus, Zap, LogIn } from 'lucide-react';
-import { Trade, TraderProfile } from '../types';
+import { Trade, TraderProfile, DiscussionPost } from '../types';
 import { SearchPanel } from './SearchPanel';
 
 interface LayoutProps {
@@ -15,8 +15,10 @@ interface LayoutProps {
   onLogout: () => void;
   trades: Trade[];
   users: TraderProfile[];
+  discussions: DiscussionPost[];
   onSearchSelect: (trade: Trade) => void;
   onSearchSelectUser: (user: TraderProfile) => void;
+  onSearchSelectDiscussion: (post: DiscussionPost) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -31,8 +33,10 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   trades,
   users,
+  discussions,
   onSearchSelect,
-  onSearchSelectUser
+  onSearchSelectUser,
+  onSearchSelectDiscussion
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -88,7 +92,7 @@ export const Layout: React.FC<LayoutProps> = ({
           active={false}
           onClick={() => { }}
         />
-        <span className="absolute -top-3 -right-1 bg-status-neutral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+        <span className="absolute -top-3 -right-6 bg-status-neutral text-white text-[8px] font-black px-1.5 py-0.5 rounded border border-white/20 shadow-sm leading-none uppercase tracking-tighter">Coming Soon</span>
       </div>
     </div>
   );
@@ -320,7 +324,7 @@ export const Layout: React.FC<LayoutProps> = ({
               disabled
             >
               <Medal size={20} className="text-status-warning" /> Leaderboard
-              <span className="ml-auto bg-status-neutral text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Soon</span>
+              <span className="ml-auto bg-status-neutral text-white text-[9px] font-black px-2 py-0.5 rounded border border-white/20 uppercase tracking-tighter">Coming Soon</span>
             </button>
 
             <div className="h-px bg-surface my-2 mx-4"></div>
@@ -374,8 +378,10 @@ export const Layout: React.FC<LayoutProps> = ({
         <SearchPanel
           trades={trades}
           users={users}
+          discussions={discussions}
           onSelectTrade={onSearchSelect}
           onSelectUser={onSearchSelectUser}
+          onSelectDiscussion={onSearchSelectDiscussion}
           onClose={() => setIsSearchOpen(false)}
         />
       )}

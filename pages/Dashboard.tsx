@@ -1317,6 +1317,7 @@ const Dashboard: React.FC = () => {
         onLogout={handleLogout}
         trades={trades}
         users={users}
+        discussions={discussions}
         onSearchSelect={(trade) => {
           setSelectedTrade(trade);
           setCurrentView('detail');
@@ -1324,6 +1325,10 @@ const Dashboard: React.FC = () => {
         onSearchSelectUser={(profile) => {
           setSelectedProfile(profile);
           setCurrentView('profile');
+        }}
+        onSearchSelectDiscussion={(post) => {
+          setSelectedDiscussion(post);
+          setCurrentView('discussion-detail');
         }}
       >
         {/* 3-Column Grid Layout */}
