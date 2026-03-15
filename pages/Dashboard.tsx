@@ -11,6 +11,7 @@ import { DiscussionDetail } from '../components/DiscussionDetail';
 import { CreateTradeModal } from '../components/CreateTradeModal';
 import { CreateDiscussionModal } from '../components/CreateDiscussionModal';
 import { JoinCommunityModal } from '../components/JoinCommunityModal';
+import { NetworkView } from '../components/NetworkView';
 import { Notifications } from '../components/Notifications';
 import { Settings } from '../components/Settings';
 import { PremiumModal } from '../components/PremiumModal';
@@ -451,7 +452,7 @@ const RightSidebar = ({
 
 const Dashboard: React.FC = () => {
   // Simple State-based routing
-  const [currentView, setCurrentView] = useState<'feed' | 'detail' | 'shadow' | 'profile' | 'leaderboard' | 'trust' | 'social' | 'discussion-detail' | 'notifications' | 'settings' | 'admin'>('feed');
+  const [currentView, setCurrentView] = useState<'feed' | 'detail' | 'shadow' | 'profile' | 'leaderboard' | 'trust' | 'social' | 'discussion-detail' | 'notifications' | 'settings' | 'admin' | 'network'>('feed');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [selectedDiscussion, setSelectedDiscussion] = useState<DiscussionPost | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<TraderProfile | null>(null);
@@ -551,11 +552,20 @@ const Dashboard: React.FC = () => {
       // Fetch or Create Profile
       const syncProfile = async () => {
         try {
-          const existingProfile = await getProfile(user.$id);
+          const [existingProfile, followingRes] = await Promise.all([
+            getProfile(user.$id),
+            import('../services/appwrite').then(m => m.getFollowing(user.$id))
+          ]);
+
           if (existingProfile) {
-            // Map Appwrite Document to TraderProfile
-            setUserProfile(existingProfile as unknown as TraderProfile); // Type casting for now, ideally map fields
-          } else {
+            setUserProfile(existingProfile as unknown as TraderProfile);
+          }
+          
+          if (followingRes && followingRes.documents) {
+            setFollowedTraders(followingRes.documents.map((doc: any) => doc.followingId));
+          }
+          
+          if (!existingProfile) {
             // Create New Profile (Preserve Mock Logic)
             const ADMIN_EMAILS = ['heshamfaragallah@gmail.com', 'hesham-farag@outlook.com'];
             const isHeshamAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
@@ -667,6 +677,9 @@ const Dashboard: React.FC = () => {
     }
     if (view !== 'discussion-detail') setSelectedDiscussion(null);
     if (view !== 'profile') setSelectedProfile(null);
+    if (view !== 'network') {
+        // Optional: clear any network specific state if any
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -772,12 +785,34 @@ const Dashboard: React.FC = () => {
 
   // Follow Handler
   const handleToggleFollow = (traderId: string) => {
-    requireAuth(() => {
+    requireAuth(async () => {
+      if (!userProfile) return;
+
+      const isFollowing = followedTraders.includes(traderId);
+      
+      // Optimistic Update
       setFollowedTraders(prev =>
-        prev.includes(traderId)
+        isFollowing
           ? prev.filter(id => id !== traderId)
           : [...prev, traderId]
       );
+
+      try {
+        const { followUser, unfollowUser } = await import('../services/appwrite');
+        if (isFollowing) {
+          await unfollowUser(userProfile.id, traderId);
+        } else {
+          await followUser(userProfile.id, traderId);
+        }
+      } catch (error) {
+        console.error("Failed to toggle follow:", error);
+        // Rollback on error
+        setFollowedTraders(prev =>
+          isFollowing
+            ? [...prev, traderId]
+            : prev.filter(id => id !== traderId)
+        );
+      }
     });
   };
 
@@ -1005,7 +1040,7 @@ const Dashboard: React.FC = () => {
           <Profile
             profile={profileToShow}
             isFollowing={followedTraders.includes(profileToShow.id)}
-            onToggleFollow={() => handleToggleFollow(profileToShow.id)}
+            onToggleFollow={profileToShow.id !== userProfile?.id ? () => handleToggleFollow(profileToShow.id) : undefined}
           />
         ) : null;
 
@@ -1046,6 +1081,19 @@ const Dashboard: React.FC = () => {
             profile={userProfile}
             onSave={handleSaveSettings}
             onBack={() => handleNavigate('feed')}
+          />
+        ) : null;
+
+      case 'network':
+        return userProfile ? (
+          <NetworkView
+            currentUserProfile={userProfile}
+            onSelectUser={(profile) => {
+              setSelectedProfile(profile);
+              setCurrentView('profile');
+            }}
+            onToggleFollow={handleToggleFollow}
+            followedTraders={followedTraders}
           />
         ) : null;
 

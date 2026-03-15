@@ -75,6 +75,12 @@ export const Layout: React.FC<LayoutProps> = ({
         active={activeView === 'shadow'}
         onClick={() => handleNavClick('shadow')}
       />
+      <NavItem
+        icon={<Users size={22} />}
+        label="Network"
+        active={activeView === 'network'}
+        onClick={() => handleNavClick('network')}
+      />
       <div className="relative">
         <NavItem
           icon={<Medal size={22} />}
@@ -302,6 +308,12 @@ export const Layout: React.FC<LayoutProps> = ({
               className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface/50 active:bg-surface text-text-primary font-bold transition-colors"
             >
               <TrendingUp size={20} className="text-status-high" /> Shadow Dashboard
+            </button>
+            <button
+              onClick={() => handleNavClick('network')}
+              className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface/50 active:bg-surface text-text-primary font-bold transition-colors"
+            >
+              <Users size={20} className="text-status-neutral" /> My Network
             </button>
             <button
               className="flex items-center gap-4 p-4 rounded-xl text-text-muted font-bold cursor-not-allowed opacity-50"
