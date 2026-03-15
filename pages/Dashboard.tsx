@@ -532,8 +532,23 @@ const Dashboard: React.FC = () => {
             avoidanceRate: 90
           }));
           setLeaderboard(mappedLeaderboard);
-          // Set users for search as well from leaderboard for now
-          setUsers(fetchedLeaderboard as unknown as TraderProfile[]);
+          
+          // Map to TraderProfile for search
+          const mappedUsers = fetchedLeaderboard.map((u: any) => ({
+            id: u.userId || u.$id,
+            name: u.name || 'Anonymous',
+            handle: u.handle || `@user_${(u.userId || u.$id).substring(0, 5)}`,
+            avatar: u.avatar,
+            reputationScore: u.reputationScore || 0,
+            points: u.points || 0,
+            winRate: u.winRate || 0,
+            joinedDate: u.$createdAt || new Date().toISOString(),
+            riskAdjustedReturn: u.riskAdjustedReturn || 0,
+            totalTrades: u.totalTrades || 0,
+            badges: [],
+            accuracyHistory: [],
+          }));
+          setUsers(mappedUsers);
         } else {
           setLeaderboard([]);
           setUsers([]);
@@ -558,7 +573,23 @@ const Dashboard: React.FC = () => {
           ]);
 
           if (existingProfile) {
-            setUserProfile(existingProfile as unknown as TraderProfile);
+            const mappedProfile: TraderProfile = {
+              id: existingProfile.userId || existingProfile.$id,
+              name: existingProfile.name || user.name || 'Anonymous',
+              handle: existingProfile.handle || `@user_${(existingProfile.userId || existingProfile.$id).substring(0, 5)}`,
+              email: existingProfile.email || user.email,
+              avatar: existingProfile.avatar,
+              isAdmin: existingProfile.isAdmin || false,
+              reputationScore: existingProfile.reputationScore || 0,
+              points: existingProfile.points || 0,
+              joinedDate: existingProfile.$createdAt || new Date().toISOString(),
+              winRate: existingProfile.winRate || 0,
+              riskAdjustedReturn: existingProfile.riskAdjustedReturn || 0,
+              totalTrades: existingProfile.totalTrades || 0,
+              badges: [],
+              accuracyHistory: [],
+            };
+            setUserProfile(mappedProfile);
           }
           
           if (followingRes && followingRes.documents) {

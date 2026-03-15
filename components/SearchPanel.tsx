@@ -27,15 +27,15 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelec
     }, []);
 
     // Live filtering for trades
-    const tradeResults = trades.filter(t => {
+    const tradeResults = (trades || []).filter(t => {
         const q = query.toLowerCase();
         const matchesQuery =
             !q ||
-            t.asset.toLowerCase().includes(q) ||
-            t.authorName.toLowerCase().includes(q) ||
-            t.market.toLowerCase().includes(q) ||
-            t.rationale.toLowerCase().includes(q) ||
-            (t.rationaleTags || []).some(tag => tag.toLowerCase().includes(q));
+            (t.asset || '').toLowerCase().includes(q) ||
+            (t.authorName || '').toLowerCase().includes(q) ||
+            (t.market || '').toLowerCase().includes(q) ||
+            (t.rationale || '').toLowerCase().includes(q) ||
+            (t.rationaleTags || []).some(tag => (tag || '').toLowerCase().includes(q));
 
         const matchesMarket = filterMarket === 'All' || t.market === filterMarket;
         const matchesType = filterType === 'All' || t.type === filterType;
@@ -47,10 +47,12 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ trades, users, onSelec
     const hasActiveFilters = filterMarket !== 'All' || filterType !== 'All' || filterHorizon !== 'All';
 
     // Live filtering for users
-    const userResults = users.filter(u => {
-        if (hasActiveFilters) return false; // Hide users if trade filters are active
+    const userResults = (users || []).filter(u => {
+        if (hasActiveFilters) return false; 
         const q = query.toLowerCase();
-        return !q || u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q);
+        return !q || 
+               (u.name || '').toLowerCase().includes(q) || 
+               (u.handle || '').toLowerCase().includes(q);
     });
 
     const totalResults = tradeResults.length + userResults.length;
@@ -225,10 +227,11 @@ function SearchResultRow({ trade, query, onClick }: { trade: Trade; query: strin
     const confidenceColor = score >= 75 ? 'text-status-high' : score >= 50 ? 'text-status-warning' : 'text-status-risk';
 
     // Highlight matching text
-    const highlight = (text: string) => {
+    const highlight = (text: string = '') => {
         if (!query) return text;
-        const idx = text.toLowerCase().indexOf(query.toLowerCase());
-        if (idx === -1) return text;
+        const safeText = text || '';
+        const idx = safeText.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return safeText;
         return (
             <>
                 {text.slice(0, idx)}
@@ -251,12 +254,12 @@ function SearchResultRow({ trade, query, onClick }: { trade: Trade; query: strin
             {/* Main info */}
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-bold text-text-primary">{highlight(trade.asset)}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-text-muted border border-surface/50 font-medium">{trade.market}</span>
+                    <span className="font-bold text-text-primary">{highlight(trade.asset || 'Unnamed Asset')}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-text-muted border border-surface/50 font-medium">{trade.market || 'Unknown'}</span>
                     <span className={`text-[10px] font-bold uppercase ${isLong ? 'text-status-high' : 'text-status-risk'}`}>{trade.type}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-text-muted">
-                    <span>{highlight(trade.authorName)}</span>
+                    <span>{highlight(trade.authorName || 'Anonymous')}</span>
                     {trade.timeHorizon && (
                         <span className="flex items-center gap-1">
                             <Clock size={10} />
@@ -285,10 +288,11 @@ function SearchResultRow({ trade, query, onClick }: { trade: Trade; query: strin
 // ─────────────────────────────────────────────────────────
 
 function SearchResultUserRow({ user, query, onClick }: { user: TraderProfile; query: string; onClick: () => void }) {
-    const highlight = (text: string) => {
+    const highlight = (text: string = '') => {
         if (!query) return text;
-        const idx = text.toLowerCase().indexOf(query.toLowerCase());
-        if (idx === -1) return text;
+        const safeText = text || '';
+        const idx = safeText.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return safeText;
         return (
             <>
                 {text.slice(0, idx)}
@@ -305,16 +309,16 @@ function SearchResultUserRow({ user, query, onClick }: { user: TraderProfile; qu
         >
             <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center font-bold text-text-secondary border border-surface flex-shrink-0">
                 {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover rounded-full" />
+                    <img src={user.avatar} alt={user.name || 'User'} className="w-full h-full object-cover rounded-full" />
                 ) : (
-                    user.name.charAt(0)
+                    (user.name || 'U').charAt(0)
                 )}
             </div>
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-bold text-text-primary">{highlight(user.name)}</span>
-                    <span className="text-[10px] text-text-muted">{highlight(user.handle)}</span>
+                    <span className="font-bold text-text-primary">{highlight(user.name || 'Unnamed')}</span>
+                    <span className="text-[10px] text-text-muted">{highlight(user.handle || '@user')}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-text-muted">
                     <span className="flex items-center gap-1 font-bold text-status-high">Rep: {user.reputationScore}</span>
