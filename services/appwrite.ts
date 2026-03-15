@@ -256,6 +256,24 @@ export async function googleLogin() {
     }
 }
 
+export async function createRecovery(email: string) {
+    try {
+        // Redirect back to our site's reset password page
+        const redirectUrl = `${window.location.origin}/reset-password`;
+        return await account.createRecovery(email, redirectUrl);
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function updateRecovery(userId: string, secret: string, password: string) {
+    try {
+        return await account.updateRecovery(userId, secret, password);
+    } catch (error) {
+        throw error;
+    }
+}
+
 export async function getProfile(userId) {
     try {
         const response = await databases.listDocuments(

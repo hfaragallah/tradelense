@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import AIToolsPage from './pages/AIToolsPage';
 import InsightsPage from './pages/InsightsPage';
 import BlogPage from './pages/BlogPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ const App: React.FC = () => {
             <Route path="/ai-tools" element={<AIToolsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/blog" element={<BlogPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             {/* Catch all - redirect to Dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
