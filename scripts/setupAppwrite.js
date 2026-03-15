@@ -51,11 +51,36 @@ const COLLECTIONS = {
             { key: 'confidenceScore', type: 'double', required: true },
             { key: 'status', type: 'string', size: 20, required: false, default: 'OPEN' }, // OPEN, CLOSED, CANCELLED
             { key: 'imageUrl', type: 'url', required: false },
-            // Crowd stats - flattened
+            { key: 'authorReputation', type: 'integer', required: false, default: 0 },
+            { key: 'crowd', type: 'string', size: 1000, required: false },
+            // Crowd stats - flattened as backups
             { key: 'crowdAgree', type: 'integer', required: false, default: 0 },
             { key: 'crowdDisagree', type: 'integer', required: false, default: 0 },
             { key: 'crowdWait', type: 'integer', required: false, default: 0 },
             { key: 'crowdTotal', type: 'integer', required: false, default: 0 },
+        ]
+    },
+    DISCUSSIONS: {
+        id: 'discussions',
+        name: 'Discussions',
+        permissions: [
+            Permission.read(Role.any()),
+            Permission.create(Role.users()),
+            Permission.update(Role.users()),
+            Permission.delete(Role.users()),
+        ],
+        attributes: [
+            { key: 'authorId', type: 'string', size: 255, required: true },
+            { key: 'authorName', type: 'string', size: 255, required: true },
+            { key: 'authorReputation', type: 'integer', required: false, default: 0 },
+            { key: 'title', type: 'string', size: 255, required: true },
+            { key: 'content', type: 'string', size: 10000, required: true },
+            { key: 'tag', type: 'string', size: 50, required: true },
+            { key: 'upvotes', type: 'integer', required: false, default: 0 },
+            { key: 'commentCount', type: 'integer', required: false, default: 0 },
+            { key: 'isPinned', type: 'boolean', required: false, default: false },
+            { key: 'imageUrl', type: 'url', required: false },
+            { key: 'comments', type: 'string', size: 20000, required: false }, // Stringified JSON
         ]
     },
     PROFILES: {
@@ -68,33 +93,85 @@ const COLLECTIONS = {
         ],
         attributes: [
             { key: 'userId', type: 'string', size: 255, required: true },
+            { key: 'name', type: 'string', size: 255, required: false },
             { key: 'handle', type: 'string', size: 50, required: true },
+            { key: 'email', type: 'string', size: 255, required: false },
             { key: 'bio', type: 'string', size: 1000, required: false },
+            { key: 'avatar', type: 'url', required: false },
             { key: 'reputationScore', type: 'integer', required: false, default: 0 },
+            { key: 'points', type: 'integer', required: false, default: 0 },
+            { key: 'winRate', type: 'double', required: false, default: 0 },
+            { key: 'riskAdjustedReturn', type: 'double', required: false, default: 0 },
+            { key: 'totalTrades', type: 'integer', required: false, default: 0 },
+            { key: 'followersCount', type: 'integer', required: false, default: 0 },
+            { key: 'followingCount', type: 'integer', required: false, default: 0 },
             { key: 'isAdmin', type: 'boolean', required: false, default: false },
+        ]
+    },
+    FOLLOWS: {
+        id: 'follows',
+        name: 'Follows',
+        permissions: [
+            Permission.read(Role.any()),
+            Permission.create(Role.users()),
+            Permission.update(Role.users()),
+            Permission.delete(Role.users()),
+        ],
+        attributes: [
+            { key: 'followerId', type: 'string', size: 255, required: true },
+            { key: 'followingId', type: 'string', size: 255, required: true },
+            { key: 'timestamp', type: 'string', size: 50, required: false },
+        ]
+    },
+    POINTS_HISTORY: {
+        id: 'points_history',
+        name: 'Points History',
+        permissions: [
+            Permission.read(Role.users()),
+            Permission.create(Role.users()),
+        ],
+        attributes: [
+            { key: 'userId', type: 'string', size: 255, required: true },
+            { key: 'points', type: 'integer', required: true },
+            { key: 'action', type: 'string', size: 100, required: true },
+            { key: 'timestamp', type: 'string', size: 50, required: true },
+        ]
+    },
+    HIVE_REGISTRATIONS: {
+        id: 'hive_registrations',
+        name: 'Hive Registrations',
+        permissions: [
+            Permission.read(Role.users()),
+            Permission.create(Role.any()),
+        ],
+        attributes: [
+            { key: 'email', type: 'string', size: 255, required: true },
+            { key: 'preference', type: 'string', size: 50, required: true },
+            { key: 'source', type: 'string', size: 50, required: false, default: 'web' },
+            { key: 'timestamp', type: 'string', size: 50, required: false },
         ]
     },
     FEEDBACK: {
         id: 'feedback',
         name: 'Feedback',
         permissions: [
-            Permission.read(Role.users()), // Only authenticated users can read
-            Permission.create(Role.users()), // Authenticated users can create
-            Permission.update(Role.users()), // Users can update their own feedback
+            Permission.read(Role.users()),
+            Permission.create(Role.users()),
+            Permission.update(Role.users()),
             Permission.delete(Role.users()),
         ],
         attributes: [
             { key: 'userId', type: 'string', size: 255, required: true },
             { key: 'userName', type: 'string', size: 255, required: true },
-            { key: 'type', type: 'string', size: 50, required: true }, // BUG, FEATURE_REQUEST, GENERAL, COMPLAINT
-            { key: 'category', type: 'string', size: 50, required: false }, // Trade Analysis, UI/UX, Performance, etc.
+            { key: 'type', type: 'string', size: 50, required: true },
+            { key: 'category', type: 'string', size: 50, required: false },
             { key: 'message', type: 'string', size: 5000, required: true },
-            { key: 'rating', type: 'integer', required: false }, // 1-5 star rating (optional)
-            { key: 'status', type: 'string', size: 20, required: false, default: 'PENDING' }, // PENDING, REVIEWED, RESOLVED, CLOSED
-            { key: 'priority', type: 'string', size: 20, required: false, default: 'MEDIUM' }, // LOW, MEDIUM, HIGH, CRITICAL
-            { key: 'adminNotes', type: 'string', size: 2000, required: false }, // Admin response/notes
+            { key: 'rating', type: 'integer', required: false },
+            { key: 'status', type: 'string', size: 20, required: false, default: 'PENDING' },
+            { key: 'priority', type: 'string', size: 20, required: false, default: 'MEDIUM' },
+            { key: 'adminNotes', type: 'string', size: 2000, required: false },
             { key: 'isResolved', type: 'boolean', required: false, default: false },
-            { key: 'screenshotUrl', type: 'url', required: false }, // Optional screenshot
+            { key: 'screenshotUrl', type: 'url', required: false },
         ]
     }
 };

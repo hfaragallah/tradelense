@@ -21,7 +21,7 @@ import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MO
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile, createProfile, updateProfile, getTrades, createTrade as appwriteCreateTrade } from '../services/appwrite';
+import { getProfile, createProfile, updateProfile, getTrades, createTrade as appwriteCreateTrade, getDiscussions, createDiscussion as appwriteCreateDiscussion } from '../services/appwrite';
 import { initGA, logPageView } from '../services/analytics';
 import { SEO } from '../components/SEO';
 
@@ -510,15 +510,22 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedTrades, fetchedLeaderboard] = await Promise.all([
+        const [fetchedTrades, fetchedLeaderboard, fetchedDiscussions] = await Promise.all([
           getTrades(),
-          import('../services/appwrite').then(m => m.getLeaderboard())
+          import('../services/appwrite').then(m => m.getLeaderboard()),
+          getDiscussions()
         ]);
 
         if (fetchedTrades && fetchedTrades.length > 0) {
           setTrades(fetchedTrades as unknown as Trade[]);
         } else {
           setTrades([]);
+        }
+
+        if (fetchedDiscussions && fetchedDiscussions.length > 0) {
+          setDiscussions(fetchedDiscussions as unknown as DiscussionPost[]);
+        } else {
+          setDiscussions([]);
         }
 
         if (fetchedLeaderboard && fetchedLeaderboard.length > 0) {
@@ -545,6 +552,8 @@ const Dashboard: React.FC = () => {
             joinedDate: u.$createdAt || new Date().toISOString(),
             riskAdjustedReturn: u.riskAdjustedReturn || 0,
             totalTrades: u.totalTrades || 0,
+            followersCount: u.followersCount || 0,
+            followingCount: u.followingCount || 0,
             badges: [],
             accuracyHistory: [],
           }));
@@ -586,6 +595,8 @@ const Dashboard: React.FC = () => {
               winRate: existingProfile.winRate || 0,
               riskAdjustedReturn: existingProfile.riskAdjustedReturn || 0,
               totalTrades: existingProfile.totalTrades || 0,
+              followersCount: existingProfile.followersCount || 0,
+              followingCount: existingProfile.followingCount || 0,
               badges: [],
               accuracyHistory: [],
             };
@@ -612,6 +623,8 @@ const Dashboard: React.FC = () => {
               winRate: 0,
               riskAdjustedReturn: 0,
               totalTrades: 0,
+              followersCount: 0,
+              followingCount: 0,
               badges: [],
               accuracyHistory: [],
             };

@@ -31,7 +31,8 @@ export const COLLECTIONS = {
     FEEDBACK: 'feedback',
     FOLLOWS: 'follows',
     POINTS_HISTORY: 'points_history',
-    HIVE_REGISTRATIONS: 'hive_registrations', // Added for Hive Registration
+    HIVE_REGISTRATIONS: 'hive_registrations',
+    DISCUSSIONS: 'discussions'
 };
 
 // ... existing login/register ...
@@ -363,9 +364,54 @@ export async function getTrades() {
             entryRange: doc.entryRange ? doc.entryRange.map(Number) : [],
             crowd: doc.crowd && typeof doc.crowd === 'string' ? JSON.parse(doc.crowd) : { agree: 0, disagree: 0, wait: 0, totalVotes: 0 },
             timestamp: doc.$createdAt,
+            authorReputation: doc.authorReputation || 0
         }));
     } catch (error) {
         console.error('Error fetching trades from Appwrite:', error);
+        return [];
+    }
+}
+
+// --- Discussion Functions ---
+
+export async function createDiscussion(discussionData) {
+    try {
+        const payload = {
+            ...discussionData,
+            comments: discussionData.comments ? JSON.stringify(discussionData.comments) : '[]'
+        };
+
+        return await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.DISCUSSIONS,
+            ID.unique(),
+            payload
+        );
+    } catch (error) {
+        console.error('Error creating discussion:', error);
+        throw error;
+    }
+}
+
+export async function getDiscussions() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.DISCUSSIONS,
+            [
+                Query.orderDesc('$createdAt'),
+                Query.limit(50)
+            ]
+        );
+
+        return response.documents.map(doc => ({
+            ...doc,
+            id: doc.$id,
+            comments: doc.comments ? JSON.parse(doc.comments) : [],
+            timestamp: doc.$createdAt
+        }));
+    } catch (error) {
+        console.error('Error fetching discussions:', error);
         return [];
     }
 }

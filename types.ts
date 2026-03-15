@@ -108,6 +108,9 @@ export interface TraderProfile {
   winRate: number;
   riskAdjustedReturn: number;
   totalTrades: number;
+  followersCount: number;
+  followingCount: number;
+  bio?: string;
   badges: {
     id: string;
     label: string;
@@ -125,7 +128,7 @@ export interface CampaignJoiner {
   email: string;
   preference: string; // Crypto, Forex, etc.
   timestamp: string;
-  source: string; // 'LetsTradeTogether'
+  source: string; // 'web'
 }
 
 export interface AIAnalysisResult {
