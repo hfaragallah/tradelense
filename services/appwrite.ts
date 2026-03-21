@@ -32,7 +32,7 @@ export const COLLECTIONS = {
     FOLLOWS: 'follows',
     POINTS_HISTORY: 'points_history',
     HIVE_REGISTRATIONS: 'hive_registrations',
-    DISCUSSIONS: 'discussions'
+    DISCUSSIONS: 'posts'
 };
 
 // ... existing login/register ...
@@ -499,70 +499,77 @@ export async function getTrades() {
 
 export async function createDiscussion(discussionData: any) {
     try {
-        const payload = {
-            author_id: discussionData.authorId,
-            author_name: discussionData.authorName,
-            author_handle: discussionData.authorHandle,
-            author_avatar: discussionData.authorAvatar,
-            title: discussionData.title,
-            content: discussionData.content,
-            tag: discussionData.tag
-        };
+        const document = await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.DISCUSSIONS,
+            ID.unique(),
+            {
+                authorId: discussionData.authorId,
+                authorName: discussionData.authorName,
+                authorHandle: discussionData.authorHandle || discussionData.authorName, // fallback
+                authorAvatar: discussionData.authorAvatar || null,
+                title: discussionData.title,
+                content: discussionData.content,
+                tag: discussionData.tag,
+                upvotes: 0,
+                commentCount: 0,
+                isPinned: false,
+                timestamp: new Date().toISOString(),
+                comments: '[]' // initialized as empty JSON array
+            }
+        );
 
-        const response = await fetch(`${AI_BACKEND_URL}/api/posts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to create discussion: ${errorText}`);
-        }
-
-        const post = await response.json();
         return {
-            ...post,
-            id: post.id,
-            authorId: post.author_id,
-            authorName: post.author_name,
-            authorHandle: post.author_handle,
-            authorAvatar: post.author_avatar,
-            timestamp: post.created_at
+            ...document,
+            id: document.$id,
+            comments: [] // parsed to empty array for frontend
         };
     } catch (error) {
-        console.error('Error creating discussion in API backend:', error);
+        console.error('Error creating discussion in Appwrite:', error);
         throw error;
     }
 }
 
+
 export async function getDiscussions() {
     try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/posts`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch discussions');
-        }
-        const posts = await response.json();
-        
-        return posts.map((p: any) => ({
-            id: p.id,
-            authorId: p.author_id,
-            authorName: p.author_name,
-            authorHandle: p.author_handle,
-            authorAvatar: p.author_avatar,
-            title: p.title,
-            content: p.content,
-            tag: p.tag,
-            upvotes: p.upvotes,
-            commentCount: p.comment_count,
-            isPinned: p.is_pinned,
-            comments: p.comments || [],
-            timestamp: p.created_at
-        }));
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.DISCUSSIONS,
+            [
+                Query.orderDesc('timestamp'),
+                Query.limit(50)
+            ]
+        );
+
+        return response.documents.map((doc: any) => {
+            let parsedComments = [];
+            try {
+                if (doc.comments) {
+                    parsedComments = JSON.parse(doc.comments);
+                }
+            } catch (e) {
+                console.warn('Failed to parse comments JSON for post', doc.$id);
+            }
+
+            return {
+                id: doc.$id,
+                authorId: doc.authorId,
+                authorName: doc.authorName,
+                authorHandle: doc.authorHandle,
+                authorAvatar: doc.authorAvatar,
+                title: doc.title,
+                content: doc.content,
+                tag: doc.tag,
+                upvotes: doc.upvotes || 0,
+                commentCount: doc.commentCount || 0,
+                isPinned: doc.isPinned || false,
+                comments: parsedComments,
+                timestamp: doc.timestamp || doc.$createdAt
+            };
+        });
     } catch (error) {
-        console.error('Error fetching discussions from API backend:', error);
+        console.error('Error fetching discussions from Appwrite:', error);
         return [];
     }
 }
