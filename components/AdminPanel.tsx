@@ -13,7 +13,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip, CartesianGrid } f
 import { MOCK_TRADES, MOCK_DISCUSSIONS } from '../constants';
 import { CampaignJoiner } from '../types';
 import { z } from 'zod';
-import { getAllFeedback } from '../services/appwrite';
+import { getAllFeedback, getTrades } from '../services/appwrite';
 
 interface AdminPanelProps {
   onNavigateBack: () => void;
@@ -129,6 +129,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (activeTab === 'trades') {
+      getTrades()
+        .then(docs => setTrades(docs))
+        .catch(() => console.error('Failed to load trades for admin.'));
+    }
     if (activeTab === 'feedback') {
       setFeedbackLoading(true);
       setFeedbackError(null);
@@ -136,6 +141,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
         .then(docs => setFeedbackList(docs))
         .catch(() => setFeedbackError('Failed to load feedback.'))
         .finally(() => setFeedbackLoading(false));
+    }
+    if (activeTab === 'users') {
+        const fetchUsers = async () => {
+            try {
+                const response = await fetch(`${import.meta.env.VITE_AI_BACKEND_URL}/api/users`);
+                if (!response.ok) throw new Error('Failed to fetch users');
+                const usersData = await response.json();
+                setUsers(usersData.map((u: any) => ({
+                    id: u.id,
+                    name: u.name,
+                    handle: u.handle,
+                    email: u.email,
+                    role: u.is_admin ? 'Admin' : 'User',
+                    status: 'Active',
+                    joined: new Date(u.created_at).toLocaleDateString(),
+                    reputation: u.reputation,
+                    points: u.points
+                })));
+            } catch (err) {
+                console.error("Failed to fetch users for admin panel:", err);
+            }
+        };
+        fetchUsers();
     }
   }, [activeTab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,7 +244,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
     });
 
     if (!result.success) {
-      setBroadcastError(result.error.errors[0].message);
+      setBroadcastError((result as any).error.errors[0].message);
       return;
     }
 
@@ -239,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
     });
 
     if (!result.success) {
-      setAirdropError(result.error.errors[0].message);
+      setAirdropError((result as any).error.errors[0].message);
       return;
     }
 
@@ -266,7 +294,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
     });
 
     if (!result.success) {
-      setCampaignError(result.error.errors[0].message);
+      setCampaignError((result as any).error.errors[0].message);
       return;
     }
 

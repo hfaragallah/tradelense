@@ -273,7 +273,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuth, i
                         <button
                           type="button"
                           onClick={() => setMode('forgot')}
-                          className="text-[10px] font-bold text-text-muted hover:text-status-neutral transition-colors"
+                          className="text-xs font-bold text-status-neutral hover:text-blue-400 transition-colors"
                         >
                           Forgot Password?
                         </button>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { TradeCard } from '../components/TradeCard';
 import { TradeDetail } from '../components/TradeDetail';
@@ -21,7 +22,7 @@ import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MO
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile, createProfile, updateProfile, getTrades, createTrade as appwriteCreateTrade, getDiscussions, createDiscussion as appwriteCreateDiscussion } from '../services/appwrite';
+import { getProfile, createProfile, updateProfile, syncUserProfile, getTrades, createTrade as appwriteCreateTrade, getDiscussions, createDiscussion as appwriteCreateDiscussion, getProfileByHandle } from '../services/appwrite';
 import { initGA, logPageView } from '../services/analytics';
 import { SEO } from '../components/SEO';
 
@@ -37,7 +38,10 @@ const LeftSidebar = ({
   userVote,
   onVote,
   onJoinClick,
-  isGuest
+  isGuest,
+  users,
+  onSelectUserProfile,
+  onNavigateDirect
 }: {
   profile: TraderProfile | null,
   activeView: string,
@@ -49,7 +53,10 @@ const LeftSidebar = ({
   userVote: ValidationType | null,
   onVote: (t: ValidationType) => void,
   onJoinClick: () => void,
-  isGuest: boolean
+  isGuest: boolean,
+  users?: TraderProfile[],
+  onSelectUserProfile?: (p: TraderProfile) => void,
+  onNavigateDirect?: (v: any) => void
 }) => {
 
   // Dynamic Crowd Calculation Helper
@@ -332,7 +339,10 @@ const RightSidebar = ({
   onFollow,
   selectedDiscussion,
   selectedTrade,
-  isGuest
+  isGuest,
+  users,
+  onSelectUserProfile,
+  onNavigateDirect
 }: {
   pulse: any,
   leaderboard: any[],
@@ -342,7 +352,10 @@ const RightSidebar = ({
   onFollow: (id: string) => void,
   selectedDiscussion: DiscussionPost | null,
   selectedTrade: Trade | null,
-  isGuest: boolean
+  isGuest: boolean,
+  users?: TraderProfile[],
+  onSelectUserProfile?: (p: TraderProfile) => void,
+  onNavigateDirect?: (v: any) => void
 }) => {
 
   // Custom Profile Sidebar Logic
@@ -408,7 +421,17 @@ const RightSidebar = ({
           {leaderboard.slice(0, 3).map((entry, idx) => {
             const isFollowing = followedTraders.includes(entry.traderId);
             return (
-              <div key={idx} className="flex items-center gap-3 p-2 hover:bg-surface/50 rounded-lg cursor-pointer transition-colors group">
+              <div 
+                key={idx} 
+                className="flex items-center gap-3 p-2 hover:bg-surface/50 rounded-lg cursor-pointer transition-colors group"
+                onClick={() => {
+                   // Find the full profile if available in users list
+                   const fullProfile = users?.find(u => u.id === entry.traderId);
+                   if (fullProfile && onSelectUserProfile) {
+                       onSelectUserProfile(fullProfile);
+                   }
+                }}
+              >
                 <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center font-bold text-xs text-text-muted border border-surface">
                   {entry.rank}
                 </div>
@@ -432,7 +455,10 @@ const RightSidebar = ({
               </div>
             );
           })}
-          <button className="w-full mt-2 text-xs text-text-muted hover:text-text-primary py-2">
+          <button 
+            className="w-full mt-2 text-xs text-text-muted hover:text-text-primary py-2"
+            onClick={() => onNavigateDirect?.('leaderboard')}
+          >
             View All Leaders
           </button>
         </div>
@@ -451,6 +477,9 @@ const RightSidebar = ({
 };
 
 const Dashboard: React.FC = () => {
+  const { username: urlUsername } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   // Simple State-based routing
   const [currentView, setCurrentView] = useState<'feed' | 'detail' | 'shadow' | 'profile' | 'leaderboard' | 'trust' | 'social' | 'discussion-detail' | 'notifications' | 'settings' | 'admin' | 'network'>('feed');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -479,7 +508,7 @@ const Dashboard: React.FC = () => {
   const [isGuest, setIsGuest] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalInitialEmail, setAuthModalInitialEmail] = useState('');
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [userProfile, setUserProfile] = useState<TraderProfile | null>(null); // Null if guest
 
 
@@ -569,6 +598,31 @@ const Dashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  // Sync currentView with URL
+  useEffect(() => {
+    const path = location.pathname.split('/')[1];
+    if (path === 'profile') {
+      setCurrentView('profile');
+    } else if (path && ['social', 'leaderboard', 'settings', 'notifications', 'admin', 'network', 'trust'].includes(path)) {
+      setCurrentView(path as any);
+    } else if (path === '') {
+      setCurrentView('feed');
+    }
+  }, [location.pathname]);
+
+  // Handle URL changes for Profile
+  useEffect(() => {
+    if (urlUsername && currentView === 'profile') {
+      const fetchProfileByHandle = async () => {
+        const profile = await getProfileByHandle(urlUsername);
+        if (profile) {
+          setSelectedProfile(profile);
+        }
+      };
+      fetchProfileByHandle();
+    }
+  }, [urlUsername, currentView]);
+
   // Sync Auth State with App State
   useEffect(() => {
     if (user && user.$id && user.email) {
@@ -576,91 +630,53 @@ const Dashboard: React.FC = () => {
       // Fetch or Create Profile
       const syncProfile = async () => {
         try {
-          const [existingProfile, followingRes] = await Promise.all([
-            getProfile(user.$id),
+          const [{ profile, isNew }, followingRes] = await Promise.all([
+            syncUserProfile(user),
             import('../services/appwrite').then(m => m.getFollowing(user.$id))
           ]);
 
-          if (existingProfile) {
+          if (profile) {
             const mappedProfile: TraderProfile = {
-              id: existingProfile.userId || existingProfile.$id,
-              name: existingProfile.name || user.name || 'Anonymous',
-              handle: existingProfile.handle || `@user_${(existingProfile.userId || existingProfile.$id).substring(0, 5)}`,
-              email: existingProfile.email || user.email,
-              avatar: existingProfile.avatar,
-              isAdmin: existingProfile.isAdmin || false,
-              reputationScore: existingProfile.reputationScore || 0,
-              points: existingProfile.points || 0,
-              joinedDate: existingProfile.$createdAt || new Date().toISOString(),
-              winRate: existingProfile.winRate || 0,
-              riskAdjustedReturn: existingProfile.riskAdjustedReturn || 0,
-              totalTrades: existingProfile.totalTrades || 0,
-              followersCount: existingProfile.followersCount || 0,
-              followingCount: existingProfile.followingCount || 0,
+              id: profile.userId || profile.$id,
+              name: profile.name || user.name || 'Anonymous',
+              handle: profile.handle || `@user_${(profile.userId || profile.$id).substring(0, 5)}`,
+              email: profile.email || user.email,
+              avatar: profile.avatar,
+              isAdmin: profile.isAdmin || false,
+              reputationScore: profile.reputationScore || 0,
+              points: profile.points || 0,
+              joinedDate: profile.$createdAt || new Date().toISOString(),
+              winRate: profile.winRate || 0,
+              riskAdjustedReturn: profile.riskAdjustedReturn || 0,
+              totalTrades: profile.totalTrades || 0,
+              followersCount: profile.followersCount || 0,
+              followingCount: profile.followingCount || 0,
               badges: [],
               accuracyHistory: [],
             };
             setUserProfile(mappedProfile);
-          }
-          
-          if (followingRes && followingRes.documents) {
-            setFollowedTraders(followingRes.documents.map((doc: any) => doc.followingId));
-          }
-          
-          if (!existingProfile) {
-            // Create New Profile (Preserve Mock Logic)
-            const ADMIN_EMAILS = ['heshamfaragallah@gmail.com', 'hesham-farag@outlook.com'];
-            const isHeshamAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
-            const newProfile: TraderProfile = {
-              id: user.$id,
-              name: user.name || (isHeshamAdmin ? 'Hesham Admin' : 'New Trader'),
-              handle: isHeshamAdmin ? '@hesham_admin' : `@user_${user.$id.substring(0, 5)}`,
-              email: user.email,
-              isAdmin: isHeshamAdmin,
-              reputationScore: isHeshamAdmin ? 999 : 10,
-              points: isHeshamAdmin ? 50000 : 500,
-              joinedDate: new Date().toISOString(),
-              winRate: 0,
-              riskAdjustedReturn: 0,
-              totalTrades: 0,
-              followersCount: 0,
-              followingCount: 0,
-              badges: [],
-              accuracyHistory: [],
-            };
 
-            try {
-              // Send to Appwrite with userId field (required by Profiles collection schema)
-              const appwriteProfileData = {
-                userId: user.$id,
-                handle: newProfile.handle,
-                bio: '', // Optional field
-                reputationScore: newProfile.reputationScore,
-                isAdmin: newProfile.isAdmin,
-              };
-              await createProfile(appwriteProfileData);
-              setUserProfile(newProfile);
-
-
+            if (isNew) {
               // Add Welcome Notification
               const welcomeNotif: Notification = {
                 id: `n_${Date.now()}`,
                 type: NotificationType.SYSTEM,
-                title: isHeshamAdmin ? 'Welcome Super Admin' : 'Welcome Bonus!',
-                message: isHeshamAdmin
+                title: profile.isAdmin ? 'Welcome Super Admin' : 'Welcome Bonus!',
+                message: profile.isAdmin
                   ? 'You have full administrative access to the platform.'
                   : 'You have received 500 points for joining TraderLense. Use them to unlock AI insights.',
                 timestamp: new Date().toISOString(),
                 isRead: false
               };
               setNotifications(prev => [welcomeNotif, ...prev]);
-
-            } catch (err) {
-              console.error("Failed to create profile", err);
             }
           }
+          
+          if (followingRes && followingRes.documents) {
+            setFollowedTraders(followingRes.documents.map((doc: any) => doc.followingId));
+          }
         } catch (err) {
-          console.error("Failed to sync profile", err);
+          console.error("Failed to sync profile:", err);
         }
       };
       syncProfile();
@@ -696,6 +712,12 @@ const Dashboard: React.FC = () => {
     setCurrentView('feed');
   };
 
+  const handleOpenAuth = (mode: 'login' | 'register' | 'forgot' = 'login', email: string = '') => {
+    setAuthModalInitialEmail(email);
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
   const requireAuth = (action: () => void) => {
     if (isGuest) {
       setIsAuthModalOpen(true);
@@ -714,16 +736,27 @@ const Dashboard: React.FC = () => {
       }
     }
 
-    setCurrentView(view as any);
+    if (view === 'feed') {
+      navigate('/');
+    } else if (view === 'profile' && userProfile) {
+      navigate(`/profile/${userProfile.handle}`);
+    } else if (view === 'detail' || view === 'discussion-detail') {
+      setCurrentView(view as any);
+    } else {
+      navigate(`/${view}`);
+    }
+
     if (view !== 'detail') {
       setSelectedTrade(null);
       setUserVote(null); // Reset vote on nav
     }
     if (view !== 'discussion-detail') setSelectedDiscussion(null);
-    if (view !== 'profile') setSelectedProfile(null);
-    if (view !== 'network') {
-        // Optional: clear any network specific state if any
+    
+    // Cleanup profiles on nav if not specific
+    if (view !== 'profile') {
+        setSelectedProfile(null);
     }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -766,9 +799,7 @@ const Dashboard: React.FC = () => {
     setCampaignJoins(prev => [newJoiner, ...prev]);
 
     // 2. Trigger registration flow via Auth
-    setAuthModalInitialEmail(email);
-    setAuthModalMode('register');
-    setIsAuthModalOpen(true);
+    handleOpenAuth('register', email);
   };
 
   const handleVote = (type: ValidationType) => {
@@ -930,19 +961,31 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCreateDiscussion = (postData: Omit<DiscussionPost, 'id' | 'timestamp' | 'upvotes' | 'commentCount'>) => {
-    requireAuth(() => {
-      const newPost: DiscussionPost = {
-        ...postData,
-        id: `d${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        upvotes: 0,
-        commentCount: 0,
-        isPinned: false,
-        comments: []
-      };
-      setDiscussions([newPost, ...discussions]);
-      // Auto-switch filter to the new post's tag so the user sees it immediately
-      setSocialFilter(newPost.tag);
+    requireAuth(async () => {
+      try {
+        const newPostData = {
+          ...postData,
+          authorId: userProfile?.id || user?.$id,
+          authorName: userProfile?.name || user?.name || 'Anonymous',
+          authorHandle: userProfile?.handle || `user_${(userProfile?.id || user?.$id || '').substring(0, 5)}`,
+          authorAvatar: userProfile?.avatar || null
+        };
+
+        const createdPost = await appwriteCreateDiscussion(newPostData);
+        
+        // Map back to DiscussionPost if needed or use as returned
+        const newPost: DiscussionPost = {
+            ...createdPost,
+            comments: createdPost.comments || []
+        };
+
+        setDiscussions([newPost, ...discussions]);
+        // Auto-switch filter to the new post's tag so the user sees it immediately
+        setSocialFilter(newPost.tag);
+      } catch (err) {
+        console.error("Failed to create discussion:", err);
+        // Optional: notification to user
+      }
     });
   };
 
@@ -1062,7 +1105,7 @@ const Dashboard: React.FC = () => {
             onDeductPoints={handleDeductPoints}
             onOpenPremium={() => setIsPremiumModalOpen(true)}
             isGuest={isGuest}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenAuth={() => handleOpenAuth('login')}
           />
         ) : <div>Trade not found</div>;
 
@@ -1080,19 +1123,35 @@ const Dashboard: React.FC = () => {
 
       case 'profile':
         const profileToShow = selectedProfile || userProfile;
-        return profileToShow ? (
+        if (!profileToShow) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 text-text-muted animate-fade-in">
+                    <div className="w-16 h-16 rounded-full bg-surface animate-pulse mb-4"></div>
+                    <p className="font-medium">Loading profile...</p>
+                    <p className="text-sm opacity-70">If this persists, try logging in again.</p>
+                </div>
+            );
+        }
+        return (
           <Profile
             profile={profileToShow}
             isFollowing={followedTraders.includes(profileToShow.id)}
             onToggleFollow={profileToShow.id !== userProfile?.id ? () => handleToggleFollow(profileToShow.id) : undefined}
           />
-        ) : null;
+        );
 
       case 'leaderboard':
         return <Leaderboard
           entries={leaderboard}
           followedTraders={followedTraders}
           onFollow={handleToggleFollow}
+          onSelectTrader={(id) => {
+            const fullProfile = users.find(u => u.id === id);
+            if (fullProfile) {
+              setSelectedProfile(fullProfile);
+              setCurrentView('profile');
+            }
+          }}
         />;
 
       case 'trust':
@@ -1326,7 +1385,7 @@ const Dashboard: React.FC = () => {
         userProfile={userProfile}
         isGuest={isGuest}
         onOpenPremium={() => setIsPremiumModalOpen(true)}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={(mode) => handleOpenAuth(mode || 'login')}
         onLogout={handleLogout}
         trades={trades}
         users={users}
@@ -1360,8 +1419,14 @@ const Dashboard: React.FC = () => {
                 selectedTrade={selectedTrade}
                 userVote={userVote}
                 onVote={handleVote}
-                onJoinClick={() => isGuest ? setIsAuthModalOpen(true) : setIsJoinModalOpen(true)}
+                onJoinClick={() => isGuest ? handleOpenAuth('register') : setIsJoinModalOpen(true)}
                 isGuest={isGuest}
+                users={users}
+                onSelectUserProfile={(p) => {
+                  setSelectedProfile(p);
+                  setCurrentView('profile');
+                }}
+                onNavigateDirect={handleNavigate}
               />
             </aside>
           )}
@@ -1389,6 +1454,12 @@ const Dashboard: React.FC = () => {
                 selectedDiscussion={selectedDiscussion}
                 selectedTrade={selectedTrade}
                 isGuest={isGuest}
+                users={users}
+                onSelectUserProfile={(p) => {
+                  setSelectedProfile(p);
+                  setCurrentView('profile');
+                }}
+                onNavigateDirect={handleNavigate}
               />
             </aside>
           )}

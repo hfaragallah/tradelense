@@ -23,6 +23,10 @@ primary_region = 'fra'
     path = "/health"
     timeout = "2s"
 
+[mounts]
+  source = "tradelense_data"
+  destination = "/data"
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'

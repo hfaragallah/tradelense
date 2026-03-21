@@ -11,7 +11,7 @@ interface LayoutProps {
   userProfile: TraderProfile | null;
   isGuest: boolean;
   onOpenPremium: () => void;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode?: 'login' | 'register') => void;
   onLogout: () => void;
   trades: Trade[];
   users: TraderProfile[];
@@ -138,13 +138,13 @@ export const Layout: React.FC<LayoutProps> = ({
               // GUEST MODE NAV RIGHT
               <div className="flex items-center gap-4">
                 <button
-                  onClick={onOpenAuth}
+                  onClick={() => onOpenAuth('login')}
                   className="text-sm font-bold text-text-secondary hover:text-text-primary transition-colors"
                 >
                   Log In
                 </button>
                 <button
-                  onClick={onOpenAuth}
+                  onClick={() => onOpenAuth('register')}
                   className="px-5 py-2 bg-status-high text-background-primary font-bold rounded-lg hover:bg-green-400 transition-colors shadow-lg shadow-green-900/20 flex items-center gap-2"
                 >
                   Join Now
@@ -254,7 +254,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <h3 className="text-xl font-bold text-text-primary mb-2">Guest Mode</h3>
               <p className="text-text-muted text-sm mb-4">Join TraderLense to unlock full access.</p>
               <button
-                onClick={() => { onOpenAuth(); setIsMobileMenuOpen(false); }}
+                onClick={() => { onOpenAuth('login'); setIsMobileMenuOpen(false); }}
                 className="w-full py-3 bg-status-high text-background-primary font-bold rounded-lg"
               >
                 Log In / Sign Up

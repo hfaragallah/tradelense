@@ -60,7 +60,7 @@ export async function registerForHive(email: string, preference: string, source:
 
 // --- Social Functions ---
 
-export async function followUser(followerId, followingId) {
+export async function followUser(followerId: string, followingId: string) {
     try {
         // Create follow record
         await databases.createDocument(
@@ -93,7 +93,7 @@ export async function followUser(followerId, followingId) {
     }
 }
 
-export async function unfollowUser(followerId, followingId) {
+export async function unfollowUser(followerId: string, followingId: string) {
     try {
         // Find the document first
         const response = await databases.listDocuments(
@@ -130,7 +130,7 @@ export async function unfollowUser(followerId, followingId) {
     }
 }
 
-export async function getFollowers(userId) {
+export async function getFollowers(userId: string) {
     try {
         return await databases.listDocuments(
             DATABASE_ID,
@@ -142,7 +142,7 @@ export async function getFollowers(userId) {
     }
 }
 
-export async function getFollowing(userId) {
+export async function getFollowing(userId: string) {
     try {
         return await databases.listDocuments(
             DATABASE_ID,
@@ -154,7 +154,7 @@ export async function getFollowing(userId) {
     }
 }
 
-export async function checkIsFollowing(followerId, followingId) {
+export async function checkIsFollowing(followerId: string, followingId: string) {
     try {
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -170,9 +170,7 @@ export async function checkIsFollowing(followerId, followingId) {
     }
 }
 
-// --- Leaderboard Functions ---
-
-export async function getLeaderboard(limit = 10) {
+export async function getLeaderboard(limit = 100) {
     try {
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -189,9 +187,30 @@ export async function getLeaderboard(limit = 10) {
     }
 }
 
+export async function searchUsers(searchTerm: string) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.PROFILES,
+            [
+                Query.or([
+                    Query.equal('handle', searchTerm),
+                    Query.contains('handle', searchTerm),
+                    Query.contains('name', searchTerm)
+                ]),
+                Query.limit(20)
+            ]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error('Error searching users:', error);
+        return [];
+    }
+}
+
 // --- Gamification Functions ---
 
-export async function awardPoints(userId, amount, action) {
+export async function awardPoints(userId: string, amount: number, action: string) {
     try {
         // Log history
         await databases.createDocument(
@@ -214,7 +233,7 @@ export async function awardPoints(userId, amount, action) {
 }
 
 
-export async function login(email, password) {
+export async function login(email: string, password: string) {
     try {
         return await account.createEmailPasswordSession(email, password);
     } catch (error) {
@@ -222,7 +241,7 @@ export async function login(email, password) {
     }
 }
 
-export async function register(email, password, name) {
+export async function register(email: string, password: string, name: string) {
     try {
         await account.create(ID.unique(), email, password, name);
         return await login(email, password);
@@ -275,21 +294,43 @@ export async function updateRecovery(userId: string, secret: string, password: s
     }
 }
 
-export async function getProfile(userId) {
+export async function getProfile(userId: string) {
     try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.PROFILES,
-            [Query.equal('userId', userId)]
-        );
-        return response.documents.length > 0 ? response.documents[0] : null;
+        const response = await fetch(`${AI_BACKEND_URL}/api/users/id/${userId}`);
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error('Failed to fetch profile from API');
+        }
+        const user = await response.json();
+        return {
+            ...user,
+            userId: user.id // Map id to userId for frontend compatibility
+        };
     } catch (error) {
-        console.error('Error fetching profile:', error);
-        return null; // Don't throw, just return null if not found (or error)
+        console.error('Error fetching profile from API:', error);
+        return null;
     }
 }
 
-export async function createProfile(profileData) {
+export async function getProfileByHandle(handle: string) {
+    try {
+        const response = await fetch(`${AI_BACKEND_URL}/api/users/${handle}`);
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error('Failed to fetch profile by handle from API');
+        }
+        const user = await response.json();
+        return {
+            ...user,
+            userId: user.id
+        };
+    } catch (error) {
+        console.error('Error fetching profile by handle from API:', error);
+        return null;
+    }
+}
+
+export async function createProfile(profileData: any) {
     try {
         return await databases.createDocument(
             DATABASE_ID,
@@ -302,122 +343,232 @@ export async function createProfile(profileData) {
     }
 }
 
-export async function updateProfile(userId, updates) {
+export async function updateProfile(userId: string, updates: any) {
     try {
-        const profile = await getProfile(userId);
-        if (profile) {
-            return await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.PROFILES,
-                profile.$id,
-                updates
-            );
-        }
-        return null;
+        const currentProfile = await getProfile(userId);
+        if (!currentProfile) return null;
+
+        const payload = {
+            id: userId,
+            email: updates.email || currentProfile.email,
+            name: updates.name || currentProfile.name,
+            handle: updates.handle || currentProfile.handle,
+            avatar_url: updates.avatar || updates.avatar_url || currentProfile.avatar_url,
+            reputation: updates.reputationScore !== undefined ? updates.reputationScore : (updates.reputation !== undefined ? updates.reputation : currentProfile.reputation),
+            points: updates.points !== undefined ? updates.points : currentProfile.points,
+            is_admin: updates.isAdmin !== undefined ? updates.isAdmin : currentProfile.is_admin
+        };
+
+        const response = await fetch(`${AI_BACKEND_URL}/api/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('Failed to update profile in API');
+        return await response.json();
     } catch (error) {
-        console.error('Error updating profile:', error);
+        console.error('Error updating profile in API:', error);
+        throw error;
+    }
+}
+
+export async function syncUserProfile(user: any) {
+    try {
+        const existingProfile = await getProfile(user.$id);
+        
+        // Extract avatar from provider metadata if available
+        const avatar = user?.prefs?.avatar_url || 
+                       user?.prefs?.picture || 
+                       user?.prefs?.photoURL ||
+                       user?.user_metadata?.avatar_url ||
+                       user?.user_metadata?.picture ||
+                       user?.user_metadata?.photoURL;
+
+        const ADMIN_EMAILS = ['heshamfaragallah@gmail.com', 'hesham-farag@outlook.com'];
+        const isHeshamAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
+
+        const payload = {
+            id: user.$id,
+            email: user.email,
+            name: user.name || (isHeshamAdmin ? 'Hesham Admin' : 'New Trader'),
+            handle: existingProfile?.handle || (isHeshamAdmin ? 'hesham_admin' : `user_${user.$id.substring(0, 5)}`),
+            avatar_url: avatar || existingProfile?.avatar_url || null,
+            reputation: existingProfile?.reputation || (isHeshamAdmin ? 999 : 10),
+            points: existingProfile?.points || (isHeshamAdmin ? 50000 : 500),
+            is_admin: isHeshamAdmin
+        };
+
+        const response = await fetch(`${AI_BACKEND_URL}/api/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('Failed to sync profile with API');
+        const apiUser = await response.json();
+        
+        return { 
+            profile: { ...apiUser, userId: apiUser.id, avatar: apiUser.avatar_url }, 
+            isNew: !existingProfile 
+        };
+    } catch (error) {
+        console.error('Error syncing user profile with API:', error);
         throw error;
     }
 }
 
 // --- Trade Feed Functions ---
 
-export async function createTrade(tradeData) {
+const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || 'https://tradelense-ai-engine.fly.dev';
+
+export async function createTrade(tradeData: any) {
     try {
-        // Appwrite requires stringified JSON for custom object arrays (like crowd or takeProfit)
-        // If your collection schema has them as simple string arrays, ensure tradeData matches
         const payload = {
-            ...tradeData,
-            takeProfit: tradeData.takeProfit ? tradeData.takeProfit.map(String) : [],
-            entryRange: tradeData.entryRange ? tradeData.entryRange.map(String) : [],
-            crowd: tradeData.crowd ? JSON.stringify(tradeData.crowd) : null
+            user_id: tradeData.authorId,
+            author_name: tradeData.authorName,
+            author_reputation: tradeData.authorReputation || 0,
+            asset: tradeData.asset,
+            market: tradeData.market,
+            type: tradeData.type,
+            entry_min: tradeData.entryRange[0],
+            entry_max: tradeData.entryRange[1],
+            stop_loss: tradeData.stopLoss,
+            take_profit: tradeData.takeProfit,
+            time_horizon: tradeData.timeHorizon,
+            description: tradeData.rationale,
+            tags: tradeData.rationaleTags,
+            confidence: tradeData.confidenceScore || 0
         };
 
-        return await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.TRADES,
-            ID.unique(),
-            payload
-        );
+        const response = await fetch(`${AI_BACKEND_URL}/trades`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to create trade: ${errorText}`);
+        }
+
+        return await response.json();
     } catch (error) {
-        console.error('Error creating trade in Appwrite:', error);
+        console.error('Error creating trade in API backend:', error);
         throw error;
     }
 }
 
 export async function getTrades() {
     try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.TRADES,
-            [
-                Query.orderDesc('$createdAt'),
-                Query.limit(50)
-            ]
-        );
-
-        // Map back from Appwrite string arrays to your Trade interface types
-        return response.documents.map(doc => ({
-            ...doc,
-            id: doc.$id,
-            takeProfit: doc.takeProfit ? doc.takeProfit.map(Number) : [],
-            entryRange: doc.entryRange ? doc.entryRange.map(Number) : [],
-            crowd: doc.crowd && typeof doc.crowd === 'string' ? JSON.parse(doc.crowd) : { agree: 0, disagree: 0, wait: 0, totalVotes: 0 },
-            timestamp: doc.$createdAt,
-            authorReputation: doc.authorReputation || 0
+        const response = await fetch(`${AI_BACKEND_URL}/trades`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch trades');
+        }
+        const trades = await response.json();
+        
+        // Map from API response to frontend Trade interface
+        return trades.map((t: any) => ({
+            id: t.id,
+            authorId: t.user_id,
+            authorName: t.author_name,
+            authorReputation: t.author_reputation,
+            asset: t.asset,
+            market: t.market,
+            type: t.type,
+            entryRange: [t.entry_min, t.entry_max],
+            stopLoss: t.stop_loss,
+            takeProfit: t.take_profit,
+            timeHorizon: t.time_horizon,
+            rationale: t.description,
+            rationaleTags: t.tags,
+            confidenceScore: t.confidence,
+            crowd: t.crowd,
+            timestamp: t.created_at,
+            imageUrl: t.imageUrl // if added later
         }));
     } catch (error) {
-        console.error('Error fetching trades from Appwrite:', error);
+        console.error('Error fetching trades from API backend:', error);
         return [];
     }
 }
 
 // --- Discussion Functions ---
 
-export async function createDiscussion(discussionData) {
+export async function createDiscussion(discussionData: any) {
     try {
         const payload = {
-            ...discussionData,
-            comments: discussionData.comments ? JSON.stringify(discussionData.comments) : '[]'
+            author_id: discussionData.authorId,
+            author_name: discussionData.authorName,
+            author_handle: discussionData.authorHandle,
+            author_avatar: discussionData.authorAvatar,
+            title: discussionData.title,
+            content: discussionData.content,
+            tag: discussionData.tag
         };
 
-        return await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.DISCUSSIONS,
-            ID.unique(),
-            payload
-        );
+        const response = await fetch(`${AI_BACKEND_URL}/api/posts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to create discussion: ${errorText}`);
+        }
+
+        const post = await response.json();
+        return {
+            ...post,
+            id: post.id,
+            authorId: post.author_id,
+            authorName: post.author_name,
+            authorHandle: post.author_handle,
+            authorAvatar: post.author_avatar,
+            timestamp: post.created_at
+        };
     } catch (error) {
-        console.error('Error creating discussion:', error);
+        console.error('Error creating discussion in API backend:', error);
         throw error;
     }
 }
 
 export async function getDiscussions() {
     try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.DISCUSSIONS,
-            [
-                Query.orderDesc('$createdAt'),
-                Query.limit(50)
-            ]
-        );
-
-        return response.documents.map(doc => ({
-            ...doc,
-            id: doc.$id,
-            comments: doc.comments ? JSON.parse(doc.comments) : [],
-            timestamp: doc.$createdAt
+        const response = await fetch(`${AI_BACKEND_URL}/api/posts`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch discussions');
+        }
+        const posts = await response.json();
+        
+        return posts.map((p: any) => ({
+            id: p.id,
+            authorId: p.author_id,
+            authorName: p.author_name,
+            authorHandle: p.author_handle,
+            authorAvatar: p.author_avatar,
+            title: p.title,
+            content: p.content,
+            tag: p.tag,
+            upvotes: p.upvotes,
+            commentCount: p.comment_count,
+            isPinned: p.is_pinned,
+            comments: p.comments || [],
+            timestamp: p.created_at
         }));
     } catch (error) {
-        console.error('Error fetching discussions:', error);
+        console.error('Error fetching discussions from API backend:', error);
         return [];
     }
 }
 
 // Feedback functions
-export async function createFeedback(feedbackData) {
+export async function createFeedback(feedbackData: any) {
     try {
         return await databases.createDocument(
             DATABASE_ID,
@@ -430,7 +581,7 @@ export async function createFeedback(feedbackData) {
     }
 }
 
-export async function getUserFeedback(userId) {
+export async function getUserFeedback(userId: string) {
     try {
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -461,7 +612,7 @@ export async function getAllFeedback() {
     }
 }
 
-export async function updateFeedback(feedbackId, updates) {
+export async function updateFeedback(feedbackId: string, updates: any) {
     try {
         return await databases.updateDocument(
             DATABASE_ID,

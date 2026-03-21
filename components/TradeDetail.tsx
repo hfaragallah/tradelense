@@ -16,7 +16,7 @@ interface TradeDetailProps {
   onDeductPoints: (amount: number) => boolean; // Returns true if successful
   onOpenPremium: () => void;
   isGuest: boolean;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode?: 'login' | 'register') => void;
 }
 
 

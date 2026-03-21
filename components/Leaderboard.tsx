@@ -6,9 +6,10 @@ interface LeaderboardProps {
   entries: LeaderboardEntry[];
   followedTraders: string[];
   onFollow: (id: string) => void;
+  onSelectTrader?: (id: string) => void;
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ entries, followedTraders, onFollow }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ entries, followedTraders, onFollow, onSelectTrader }) => {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
@@ -93,7 +94,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ entries, followedTrade
             {entries.map((entry) => {
               const isFollowing = followedTraders.includes(entry.traderId);
               return (
-              <tr key={entry.traderId} className="hover:bg-surface/30 transition-colors group cursor-pointer">
+              <tr 
+                key={entry.traderId} 
+                className="hover:bg-surface/30 transition-colors group cursor-pointer"
+                onClick={() => onSelectTrader?.(entry.traderId)}
+              >
                 <td className="p-4">
                   <div className={`w-8 h-8 flex items-center justify-center rounded-full font-bold font-mono shadow-sm
                     ${entry.rank === 1 ? 'bg-status-warning text-background-primary' : 
