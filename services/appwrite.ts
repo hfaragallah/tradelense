@@ -632,4 +632,93 @@ export async function updateFeedback(feedbackId: string, updates: any) {
     }
 }
 
+// --- Post Feed Functions (via AI Backend) ---
+
+export async function createPost(postData: {
+    authorId: string;
+    authorName: string;
+    authorHandle: string;
+    authorAvatar?: string;
+    title: string;
+    content: string;
+    tag: string;
+}) {
+    try {
+        const payload = {
+            author_id: postData.authorId,
+            author_name: postData.authorName,
+            author_handle: postData.authorHandle || postData.authorName,
+            author_avatar: postData.authorAvatar || null,
+            title: postData.title,
+            content: postData.content,
+            tag: postData.tag,
+        };
+
+        const response = await fetch(`${AI_BACKEND_URL}/api/posts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to create post:', errorText);
+            throw new Error(`Failed to create post: ${errorText}`);
+        }
+
+        const post = await response.json();
+        return {
+            id: post.id,
+            authorId: post.author_id,
+            authorName: post.author_name,
+            authorHandle: post.author_handle,
+            authorAvatar: post.author_avatar,
+            title: post.title,
+            content: post.content,
+            tag: post.tag,
+            upvotes: post.upvotes,
+            commentCount: post.comment_count,
+            isPinned: post.is_pinned,
+            comments: post.comments || [],
+            timestamp: post.created_at,
+        };
+    } catch (error) {
+        console.error('Error creating post via API backend:', error);
+        throw error;
+    }
+}
+
+export async function getPosts() {
+    try {
+        const response = await fetch(`${AI_BACKEND_URL}/api/posts`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to fetch posts:', errorText);
+            return [];
+        }
+
+        const posts = await response.json();
+        return posts.map((post: any) => ({
+            id: post.id,
+            authorId: post.author_id,
+            authorName: post.author_name,
+            authorHandle: post.author_handle,
+            authorAvatar: post.author_avatar,
+            title: post.title,
+            content: post.content,
+            tag: post.tag,
+            upvotes: post.upvotes,
+            commentCount: post.comment_count,
+            isPinned: post.is_pinned,
+            comments: post.comments || [],
+            timestamp: post.created_at,
+        }));
+    } catch (error) {
+        console.error('Error fetching posts from API backend:', error);
+        return [];
+    }
+}
+
 export default client;
+

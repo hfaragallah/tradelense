@@ -22,7 +22,7 @@ import { MOCK_TRADES, MOCK_PROFILE, MOCK_USERS, MOCK_LEADERBOARD, MOCK_PULSE, MO
 import { Trade, RationaleTag, DiscussionPost, TraderProfile, DiscussionTag, ValidationType, Notification, NotificationType, UserSettings, PremiumPackage, CampaignJoiner } from '../types';
 import { Filter, Plus, ShieldCheck, MapPin, Hash, Bookmark, MoreHorizontal, SlidersHorizontal, ChevronDown, AlertCircle, CheckCircle2, XCircle, UserPlus, UserCheck, Users, BarChart2, ThumbsUp, ThumbsDown, HelpCircle, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile, createProfile, updateProfile, syncUserProfile, getTrades, createTrade as appwriteCreateTrade, getDiscussions, createDiscussion as appwriteCreateDiscussion, getProfileByHandle } from '../services/appwrite';
+import { getProfile, createProfile, updateProfile, syncUserProfile, getTrades, createTrade as appwriteCreateTrade, getPosts, createPost, getProfileByHandle } from '../services/appwrite';
 import { initGA, logPageView } from '../services/analytics';
 import { SEO } from '../components/SEO';
 
@@ -539,10 +539,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedTrades, fetchedLeaderboard, fetchedDiscussions] = await Promise.all([
+        const [fetchedTrades, fetchedLeaderboard, fetchedPosts] = await Promise.all([
           getTrades(),
           import('../services/appwrite').then(m => m.getLeaderboard()),
-          getDiscussions()
+          getPosts()
         ]);
 
         if (fetchedTrades && fetchedTrades.length > 0) {
@@ -551,8 +551,8 @@ const Dashboard: React.FC = () => {
           setTrades([]);
         }
 
-        if (fetchedDiscussions && fetchedDiscussions.length > 0) {
-          setDiscussions(fetchedDiscussions as unknown as DiscussionPost[]);
+        if (fetchedPosts && fetchedPosts.length > 0) {
+          setDiscussions(fetchedPosts as unknown as DiscussionPost[]);
         } else {
           setDiscussions([]);
         }
@@ -964,30 +964,37 @@ const Dashboard: React.FC = () => {
     requireAuth(async () => {
       try {
         const newPostData = {
-          ...postData,
-          authorId: userProfile?.id || user?.$id,
+          authorId: userProfile?.id || user?.$id || '',
           authorName: userProfile?.name || user?.name || 'Anonymous',
           authorHandle: userProfile?.handle || `user_${(userProfile?.id || user?.$id || '').substring(0, 5)}`,
-          authorAvatar: userProfile?.avatar || null
+          authorAvatar: userProfile?.avatar || undefined,
+          title: postData.title,
+          content: postData.content,
+          tag: postData.tag,
         };
 
-        const createdPost = await appwriteCreateDiscussion(newPostData);
-        
-        // Map back to DiscussionPost if needed or use as returned
+        const createdPost = await createPost(newPostData);
+
+        // Map back to DiscussionPost
         const newPost: DiscussionPost = {
-            ...createdPost,
-            comments: createdPost.comments || []
+            ...postData,
+            id: createdPost.id,
+            timestamp: createdPost.timestamp,
+            upvotes: createdPost.upvotes,
+            commentCount: createdPost.commentCount,
+            comments: createdPost.comments || [],
+            authorName: createdPost.authorName,
         };
 
         setDiscussions([newPost, ...discussions]);
         // Auto-switch filter to the new post's tag so the user sees it immediately
         setSocialFilter(newPost.tag);
       } catch (err) {
-        console.error("Failed to create discussion:", err);
-        // Optional: notification to user
+        console.error("Failed to create post:", err);
       }
     });
   };
+
 
   const handleTogglePin = (id: string) => {
     requireAuth(() => {
