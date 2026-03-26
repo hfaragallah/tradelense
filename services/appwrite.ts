@@ -456,7 +456,7 @@ export async function createTrade(tradeData: any) {
             entryMin: tradeData.entryRange[0],
             entryMax: tradeData.entryRange[1],
             stopLoss: tradeData.stopLoss,
-            takeProfit: tradeData.takeProfit,
+            takeProfit: Array.isArray(tradeData.takeProfit) ? tradeData.takeProfit : [tradeData.takeProfit],
             timeHorizon: tradeData.timeHorizon,
             rationale: tradeData.rationale,
             rationaleTags: tradeData.rationaleTags || [],
@@ -469,14 +469,17 @@ export async function createTrade(tradeData: any) {
             payload.imageUrl = tradeData.imageUrl;
         }
 
-        return await databases.createDocument(
+        const doc = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.TRADES,
             ID.unique(),
             payload
         );
-    } catch (error) {
-        console.error('Error creating trade in Appwrite:', error);
+        console.log('✅ Trade saved to Appwrite:', doc.$id);
+        return doc;
+    } catch (error: any) {
+        console.error('❌ Error creating trade in Appwrite:', error?.message || error);
+        if (error?.response) console.error('   Appwrite response:', JSON.stringify(error.response));
         throw error;
     }
 }
@@ -579,6 +582,7 @@ export async function updateFeedback(feedbackId: string, updates: any) {
 
 export async function createPost(postData: any) {
     try {
+        const now = new Date().toISOString();
         const payload: Record<string, any> = {
             authorId: postData.authorId,
             authorName: postData.authorName,
@@ -590,7 +594,8 @@ export async function createPost(postData: any) {
             commentCount: 0,
             isPinned: false,
             comments: JSON.stringify([]),
-            createdAt: new Date().toISOString()
+            timestamp: now,
+            createdAt: now
         };
 
         // Only include authorAvatar if it has a value — Appwrite rejects null for string attributes
@@ -604,14 +609,16 @@ export async function createPost(postData: any) {
             ID.unique(),
             payload
         );
+        console.log('✅ Post saved to Appwrite:', doc.$id);
         return {
             ...doc,
             id: doc.$id,
             comments: [],
-            timestamp: (doc as any).createdAt || doc.$createdAt
+            timestamp: (doc as any).timestamp || (doc as any).createdAt || doc.$createdAt
         };
-    } catch (error) {
-        console.error('Error creating post in Appwrite:', error);
+    } catch (error: any) {
+        console.error('❌ Error creating post in Appwrite:', error?.message || error);
+        if (error?.response) console.error('   Appwrite response:', JSON.stringify(error.response));
         throw error;
     }
 }

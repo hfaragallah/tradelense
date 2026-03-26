@@ -96,6 +96,7 @@ async function setup() {
         await createAttribute(dbId, 'posts', 'integer', 'commentCount', false, 0, 1000000, 0);
         await createAttribute(dbId, 'posts', 'boolean', 'isPinned', false, false);
         await createAttribute(dbId, 'posts', 'string', 'comments', 5000, false); // Stringified JSON
+        await createAttribute(dbId, 'posts', 'string', 'timestamp', 255, false); // Backward compat
         await createAttribute(dbId, 'posts', 'datetime', 'createdAt', false);
 
         // TRADES
