@@ -131,7 +131,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigateBack, onLogout
   useEffect(() => {
     if (activeTab === 'trades') {
       getTrades()
-        .then(docs => setTrades(docs))
+        .then(docs => setTrades(docs as any))
         .catch(() => console.error('Failed to load trades for admin.'));
     }
     if (activeTab === 'feedback') {

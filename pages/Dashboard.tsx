@@ -629,7 +629,7 @@ const Dashboard: React.FC = () => {
       const fetchProfileByHandle = async () => {
         const profile = await getProfileByHandle(urlUsername);
         if (profile) {
-          setSelectedProfile(profile);
+          setSelectedProfile(profile as any);
         }
       };
       fetchProfileByHandle();
