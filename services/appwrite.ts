@@ -58,16 +58,34 @@ export async function registerForHive(email: string, preference: string, source:
 
 // ... existing login/register ...
 
-// --- Social Functions (AI Backend) ---
+// --- Social Functions ---
 
 export async function followUser(followerId: string, followingId: string) {
     try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/follow`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ follower_id: followerId, following_id: followingId }),
-        });
-        if (!response.ok) throw new Error('Failed to follow user');
+        // Create follow record
+        await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            ID.unique(),
+            { followerId, followingId, timestamp: new Date().toISOString() }
+        );
+
+        // Update counts (optimistic or separate logic needed for strict consistency)
+        // Note: Ideally use Appwrite Functions for increments to be atomic
+        const followingProfile = await getProfile(followingId);
+        if (followingProfile) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followingProfile.$id, {
+                followersCount: (followingProfile.followersCount || 0) + 1
+            });
+        }
+
+        const followerProfile = await getProfile(followerId);
+        if (followerProfile) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followerProfile.$id, {
+                followingCount: (followerProfile.followingCount || 0) + 1
+            });
+        }
+
         return true;
     } catch (error) {
         console.error('Error following user:', error);
@@ -77,11 +95,34 @@ export async function followUser(followerId: string, followingId: string) {
 
 export async function unfollowUser(followerId: string, followingId: string) {
     try {
-        const response = await fetch(
-            `${AI_BACKEND_URL}/api/follow?follower_id=${encodeURIComponent(followerId)}&following_id=${encodeURIComponent(followingId)}`,
-            { method: 'DELETE' }
+        // Find the document first
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [
+                Query.equal('followerId', followerId),
+                Query.equal('followingId', followingId)
+            ]
         );
-        if (!response.ok) throw new Error('Failed to unfollow user');
+
+        if (response.documents.length > 0) {
+            await databases.deleteDocument(DATABASE_ID, COLLECTIONS.FOLLOWS, response.documents[0].$id);
+
+            // Decrement counts
+            const followingProfile = await getProfile(followingId);
+            if (followingProfile) {
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followingProfile.$id, {
+                    followersCount: Math.max(0, (followingProfile.followersCount || 0) - 1)
+                });
+            }
+
+            const followerProfile = await getProfile(followerId);
+            if (followerProfile) {
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.PROFILES, followerProfile.$id, {
+                    followingCount: Math.max(0, (followerProfile.followingCount || 0) - 1)
+                });
+            }
+        }
         return true;
     } catch (error) {
         console.error('Error unfollowing user:', error);
@@ -91,62 +132,55 @@ export async function unfollowUser(followerId: string, followingId: string) {
 
 export async function getFollowers(userId: string) {
     try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/users/${encodeURIComponent(userId)}/followers`);
-        if (!response.ok) return [];
-        return await response.json();
+        return await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [Query.equal('followingId', userId)]
+        );
     } catch (error) {
-        console.error('Error fetching followers:', error);
-        return [];
+        return { documents: [], total: 0 };
     }
 }
 
 export async function getFollowing(userId: string) {
     try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/users/${encodeURIComponent(userId)}/following`);
-        if (!response.ok) return [];
-        return await response.json();
+        return await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [Query.equal('followerId', userId)]
+        );
     } catch (error) {
-        console.error('Error fetching following:', error);
-        return [];
-    }
-}
-
-export async function getFollowingIds(userId: string): Promise<string[]> {
-    try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/users/${encodeURIComponent(userId)}/following-ids`);
-        if (!response.ok) return [];
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching following ids:', error);
-        return [];
+        return { documents: [], total: 0 };
     }
 }
 
 export async function checkIsFollowing(followerId: string, followingId: string) {
     try {
-        const ids = await getFollowingIds(followerId);
-        return ids.includes(followingId);
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FOLLOWS,
+            [
+                Query.equal('followerId', followerId),
+                Query.equal('followingId', followingId)
+            ]
+        );
+        return response.documents.length > 0;
     } catch (error) {
         return false;
     }
 }
 
-export async function getAllUsers() {
-    try {
-        const response = await fetch(`${AI_BACKEND_URL}/api/users`);
-        if (!response.ok) return [];
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching all users:', error);
-        return [];
-    }
-}
-
 export async function getLeaderboard(limit = 100) {
-    // Now uses AI Backend instead of Appwrite profiles
     try {
-        const users = await getAllUsers();
-        return users.slice(0, limit);
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.PROFILES,
+            [
+                Query.orderDesc('reputationScore'),
+                Query.limit(limit)
+            ]
+        );
+        return response.documents;
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
         return [];
@@ -155,12 +189,19 @@ export async function getLeaderboard(limit = 100) {
 
 export async function searchUsers(searchTerm: string) {
     try {
-        const users = await getAllUsers();
-        const term = searchTerm.toLowerCase();
-        return users.filter((u: any) =>
-            (u.name || '').toLowerCase().includes(term) ||
-            (u.handle || '').toLowerCase().includes(term)
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.PROFILES,
+            [
+                Query.or([
+                    Query.equal('handle', searchTerm),
+                    Query.contains('handle', searchTerm),
+                    Query.contains('name', searchTerm)
+                ]),
+                Query.limit(20)
+            ]
         );
+        return response.documents;
     } catch (error) {
         console.error('Error searching users:', error);
         return [];

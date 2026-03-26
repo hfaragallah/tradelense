@@ -558,31 +558,31 @@ const Dashboard: React.FC = () => {
         }
 
         if (fetchedLeaderboard && fetchedLeaderboard.length > 0) {
-          // Map AI Backend user to leaderboard format
+          // Map Appwrite Profile to what Sidebar expects
           const mappedLeaderboard = fetchedLeaderboard.map((u: any, idx: number) => ({
             rank: idx + 1,
-            traderId: u.id,
+            traderId: u.userId,
             name: u.name || 'Anonymous',
-            reputation: u.reputation || 0,
-            disciplineScore: 90,
+            reputation: u.reputationScore,
+            disciplineScore: 90, // Fallback if not in schema
             avoidanceRate: 90
           }));
           setLeaderboard(mappedLeaderboard);
           
           // Map to TraderProfile for search
           const mappedUsers = fetchedLeaderboard.map((u: any) => ({
-            id: u.id,
+            id: u.userId || u.$id,
             name: u.name || 'Anonymous',
-            handle: u.handle || `@user_${(u.id || '').substring(0, 5)}`,
-            avatar: u.avatar_url,
-            reputationScore: u.reputation || 0,
+            handle: u.handle || `@user_${(u.userId || u.$id).substring(0, 5)}`,
+            avatar: u.avatar,
+            reputationScore: u.reputationScore || 0,
             points: u.points || 0,
-            winRate: 0,
-            joinedDate: u.created_at || new Date().toISOString(),
-            riskAdjustedReturn: 0,
-            totalTrades: 0,
-            followersCount: 0,
-            followingCount: 0,
+            winRate: u.winRate || 0,
+            joinedDate: u.$createdAt || new Date().toISOString(),
+            riskAdjustedReturn: u.riskAdjustedReturn || 0,
+            totalTrades: u.totalTrades || 0,
+            followersCount: u.followersCount || 0,
+            followingCount: u.followingCount || 0,
             badges: [],
             accuracyHistory: [],
           }));
@@ -603,6 +603,10 @@ const Dashboard: React.FC = () => {
     const path = location.pathname.split('/')[1];
     if (path === 'profile') {
       setCurrentView('profile');
+    } else if (path === 'trade') {
+      setCurrentView('detail');
+    } else if (path === 'discussion') {
+      setCurrentView('discussion-detail');
     } else if (path && ['social', 'leaderboard', 'settings', 'notifications', 'admin', 'network', 'trust'].includes(path)) {
       setCurrentView(path as any);
     } else if (path === '') {
@@ -630,9 +634,9 @@ const Dashboard: React.FC = () => {
       // Fetch or Create Profile
       const syncProfile = async () => {
         try {
-          const [{ profile, isNew }, followingIds] = await Promise.all([
+          const [{ profile, isNew }, followingRes] = await Promise.all([
             syncUserProfile(user),
-            import('../services/appwrite').then(m => m.getFollowingIds(user.$id))
+            import('../services/appwrite').then(m => m.getFollowing(user.$id))
           ]);
 
           if (profile) {
@@ -672,8 +676,8 @@ const Dashboard: React.FC = () => {
             }
           }
           
-          if (followingIds && followingIds.length > 0) {
-            setFollowedTraders(followingIds);
+          if (followingRes && followingRes.documents) {
+            setFollowedTraders(followingRes.documents.map((doc: any) => doc.followingId));
           }
         } catch (err) {
           console.error("Failed to sync profile:", err);
@@ -738,12 +742,15 @@ const Dashboard: React.FC = () => {
 
     if (view === 'feed') {
       navigate('/');
+      setCurrentView('feed');
     } else if (view === 'profile' && userProfile) {
       navigate(`/profile/${userProfile.handle}`);
+      setCurrentView('profile');
     } else if (view === 'detail' || view === 'discussion-detail') {
       setCurrentView(view as any);
     } else {
       navigate(`/${view}`);
+      setCurrentView(view as any);
     }
 
     if (view !== 'detail') {
@@ -895,12 +902,14 @@ const Dashboard: React.FC = () => {
   const handleTradeClick = (trade: Trade) => {
     setSelectedTrade(trade);
     setUserVote(null); // Reset vote when opening new trade
+    navigate(`/trade/${trade.id}`);
     setCurrentView('detail');
   };
 
   // Discussion Selection
   const handleDiscussionClick = (post: DiscussionPost) => {
     setSelectedDiscussion(post);
+    navigate(`/discussion/${post.id}`);
     setCurrentView('discussion-detail');
   };
 
@@ -1106,7 +1115,7 @@ const Dashboard: React.FC = () => {
         return selectedTrade ? (
           <TradeDetail
             trade={selectedTrade}
-            onBack={() => setCurrentView('feed')}
+            onBack={() => navigate('/')} // Go back to feed
             onShadow={handleShadowTrade}
             userPoints={userProfile?.points || 0}
             onDeductPoints={handleDeductPoints}
@@ -1120,7 +1129,7 @@ const Dashboard: React.FC = () => {
         return selectedDiscussion ? (
           <DiscussionDetail
             post={selectedDiscussion}
-            onBack={() => setCurrentView('social')}
+            onBack={() => navigate('/social')} // Go back to social hub
             onTogglePin={handleTogglePin}
             onAddComment={handleAddComment}
             onUpvote={handleUpvote}
@@ -1156,7 +1165,7 @@ const Dashboard: React.FC = () => {
             const fullProfile = users.find(u => u.id === id);
             if (fullProfile) {
               setSelectedProfile(fullProfile);
-              setCurrentView('profile');
+              navigate(`/profile/${fullProfile.handle}`);
             }
           }}
         />;
@@ -1181,7 +1190,7 @@ const Dashboard: React.FC = () => {
           onMarkAsRead={handleMarkAsRead}
           onMarkAllAsRead={handleMarkAllAsRead}
           onNavigateSettings={() => handleNavigate('settings')}
-          onBack={() => handleNavigate('feed')}
+          onBack={() => navigate('/')} // Go back to feed
         />;
 
       case 'settings':
@@ -1190,7 +1199,7 @@ const Dashboard: React.FC = () => {
             settings={settings}
             profile={userProfile}
             onSave={handleSaveSettings}
-            onBack={() => handleNavigate('feed')}
+            onBack={() => navigate('/')} // Go back to feed
           />
         ) : null;
 
@@ -1200,7 +1209,7 @@ const Dashboard: React.FC = () => {
             currentUserProfile={userProfile}
             onSelectUser={(profile) => {
               setSelectedProfile(profile);
-              setCurrentView('profile');
+              navigate(`/profile/${profile.handle}`);
             }}
             onToggleFollow={handleToggleFollow}
             followedTraders={followedTraders}
@@ -1219,7 +1228,7 @@ const Dashboard: React.FC = () => {
               <div className="bg-background-secondary border border-surface rounded-xl p-12 text-center">
                 <p className="text-text-muted mb-4">You aren't shadowing any trades yet.</p>
                 <button
-                  onClick={() => setCurrentView('feed')}
+                  onClick={() => navigate('/')} // Go to feed
                   className="px-4 py-2 bg-status-neutral hover:bg-blue-600 text-white rounded-lg transition-colors"
                 >
                   Browse Feed
@@ -1292,7 +1301,7 @@ const Dashboard: React.FC = () => {
                         ? 'bg-status-neutral text-white border-status-neutral'
                         : 'bg-background-secondary text-text-secondary border-surface hover:border-text-muted hover:text-text-primary'
                         }`}
-                    >
+                  >
                       {tag}
                     </button>
                   ))}
@@ -1375,7 +1384,7 @@ const Dashboard: React.FC = () => {
 
   // --- SPECIAL ADMIN VIEW (NO LAYOUT) ---
   if (currentView === 'admin' && userProfile?.isAdmin) {
-    return <AdminPanel onNavigateBack={() => handleNavigate('feed')} onLogout={handleLogout} campaignJoins={campaignJoins} />;
+    return <AdminPanel onNavigateBack={() => navigate('/')} onLogout={handleLogout} campaignJoins={campaignJoins} />;
   }
 
   return (
@@ -1399,14 +1408,17 @@ const Dashboard: React.FC = () => {
         discussions={discussions}
         onSearchSelect={(trade) => {
           setSelectedTrade(trade);
+          navigate(`/trade/${trade.id}`);
           setCurrentView('detail');
         }}
         onSearchSelectUser={(profile) => {
           setSelectedProfile(profile);
+          navigate(`/profile/${profile.handle}`);
           setCurrentView('profile');
         }}
         onSearchSelectDiscussion={(post) => {
           setSelectedDiscussion(post);
+          navigate(`/discussion/${post.id}`);
           setCurrentView('discussion-detail');
         }}
       >
@@ -1431,7 +1443,7 @@ const Dashboard: React.FC = () => {
                 users={users}
                 onSelectUserProfile={(p) => {
                   setSelectedProfile(p);
-                  setCurrentView('profile');
+                  navigate(`/profile/${p.handle}`);
                 }}
                 onNavigateDirect={handleNavigate}
               />
@@ -1464,7 +1476,7 @@ const Dashboard: React.FC = () => {
                 users={users}
                 onSelectUserProfile={(p) => {
                   setSelectedProfile(p);
-                  setCurrentView('profile');
+                  navigate(`/profile/${p.handle}`);
                 }}
                 onNavigateDirect={handleNavigate}
               />
