@@ -116,6 +116,20 @@ async function setup() {
         await createAttribute(dbId, 'trades', 'string', 'imageUrl', 2048, false);
         await createAttribute(dbId, 'trades', 'datetime', 'timestamp', false);
 
+        // CONTACT MESSAGES
+        console.log("\nSetting up CONTACT_MESSAGES collection...");
+        try {
+            await databases.createCollection(dbId, 'contact_messages', 'Contact Messages', defaultPerms);
+        } catch (e) {
+            if (e.code !== 409) console.error(e.message);
+        }
+        await createAttribute(dbId, 'contact_messages', 'string', 'name', 255, true);
+        await createAttribute(dbId, 'contact_messages', 'string', 'email', 255, true);
+        await createAttribute(dbId, 'contact_messages', 'string', 'subject', 255, true);
+        await createAttribute(dbId, 'contact_messages', 'string', 'message', 5000, true);
+        await createAttribute(dbId, 'contact_messages', 'string', 'status', 50, false, 'pending');
+        await createAttribute(dbId, 'contact_messages', 'datetime', 'timestamp', false);
+
         console.log("\nAppwrite Setup Complete!");
 
     } catch (e) {

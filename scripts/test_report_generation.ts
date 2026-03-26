@@ -33,7 +33,6 @@ async function test() {
         if (result) {
             console.log('SUCCESS: AI Report Generated');
             console.log('Decision:', result.currentStatus.decision);
-            console.log('Sentiment Score:', result.governance?.sentimentScore);
             console.log('Keys:', Object.keys(result));
             if (result.error) {
                 console.warn('AI reported an error:', result.error);

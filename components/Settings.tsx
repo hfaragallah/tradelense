@@ -82,7 +82,8 @@ export const Settings: React.FC<SettingsProps> = ({ settings, profile, onSave, o
     });
 
     if (!validation.success) {
-      setError(validation.error.errors[0].message);
+      const err = validation as any;
+      setError(err.error?.errors?.[0]?.message || 'Validation failed');
       return;
     }
 

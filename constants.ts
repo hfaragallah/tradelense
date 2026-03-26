@@ -40,6 +40,8 @@ export const MOCK_PROFILE: TraderProfile = {
   winRate: 62,
   riskAdjustedReturn: 2.4,
   totalTrades: 142,
+  followersCount: 1540,
+  followingCount: 30,
   badges: [
     { id: 'b1', label: 'Disciplined', icon: 'Shield', color: 'text-status-high', description: 'Consistently respects stop losses.' },
     { id: 'b2', label: 'Macro Eye', icon: 'Eye', color: 'text-purple-400', description: 'High accuracy on timeframe > 1 week.' }
@@ -72,6 +74,8 @@ export const MOCK_USERS: TraderProfile[] = [
     winRate: 68,
     riskAdjustedReturn: 2.1,
     totalTrades: 215,
+    followersCount: 1540,
+    followingCount: 30,
     badges: [
       { id: 'b3', label: 'Consistent', icon: 'TrendingUp', color: 'text-status-neutral', description: 'Profitable for 6 consecutive months.' }
     ],
@@ -97,6 +101,8 @@ export const MOCK_USERS: TraderProfile[] = [
     winRate: 59,
     riskAdjustedReturn: 3.5,
     totalTrades: 420,
+    followersCount: 1540,
+    followingCount: 30,
     badges: [],
     accuracyHistory: [],
     biasInsights: []
@@ -112,6 +118,8 @@ export const MOCK_USERS: TraderProfile[] = [
     winRate: 75,
     riskAdjustedReturn: 1.8,
     totalTrades: 85,
+    followersCount: 1540,
+    followingCount: 30,
     badges: [],
     accuracyHistory: [],
     biasInsights: []

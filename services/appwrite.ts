@@ -32,7 +32,8 @@ export const COLLECTIONS = {
     FOLLOWS: 'follows',
     POINTS_HISTORY: 'points_history',
     HIVE_REGISTRATIONS: 'hive_registrations',
-    DISCUSSIONS: 'posts'
+    DISCUSSIONS: 'posts',
+    CONTACT_MESSAGES: 'contact_messages'
 };
 
 // ... existing login/register ...
@@ -720,5 +721,25 @@ export async function getPosts() {
     }
 }
 
-export default client;
+export async function submitContactForm(data: { name: string; email: string; subject: string; message: string; }) {
+    try {
+        return await databases.createDocument(
+            DATABASE_ID,
+            COLLECTIONS.CONTACT_MESSAGES,
+            ID.unique(),
+            {
+                name: data.name,
+                email: data.email,
+                subject: data.subject,
+                message: data.message,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            }
+        );
+    } catch (error) {
+        console.error('Error submitting contact form:', error);
+        throw error;
+    }
+}
 
+export default client;

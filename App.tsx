@@ -7,6 +7,10 @@ import AIToolsPage from './pages/AIToolsPage';
 import InsightsPage from './pages/InsightsPage';
 import BlogPage from './pages/BlogPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import AboutPage from './pages/AboutPage';
+import GuidelinesPage from './pages/GuidelinesPage';
+import PrivacyTermsPage from './pages/PrivacyTermsPage';
+import HelpCenterPage from './pages/HelpCenterPage';
 
 const App: React.FC = () => {
   return (
@@ -23,6 +27,13 @@ const App: React.FC = () => {
             <Route path="/settings" element={<Dashboard />} />
             <Route path="/notifications" element={<Dashboard />} />
             <Route path="/admin" element={<Dashboard />} />
+            
+            {/* Info Pages */}
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/guidelines" element={<GuidelinesPage />} />
+            <Route path="/privacy-terms" element={<PrivacyTermsPage />} />
+            <Route path="/help-center" element={<HelpCenterPage />} />
+
             <Route path="/app" element={<Navigate to="/" replace />} />
             <Route path="/ai-tools" element={<AIToolsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
