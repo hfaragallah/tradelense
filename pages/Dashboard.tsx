@@ -616,7 +616,7 @@ const Dashboard: React.FC = () => {
       setCurrentView('detail');
     } else if (path === 'discussion') {
       setCurrentView('discussion-detail');
-    } else if (path && ['social', 'leaderboard', 'settings', 'notifications', 'admin', 'network', 'trust'].includes(path)) {
+    } else if (path && ['social', 'shadow', 'leaderboard', 'settings', 'notifications', 'admin', 'network', 'trust'].includes(path)) {
       setCurrentView(path as any);
     } else if (path === '') {
       setCurrentView('feed');

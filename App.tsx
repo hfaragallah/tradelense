@@ -23,6 +23,9 @@ const App: React.FC = () => {
             <Route path="/trade/:id" element={<Dashboard />} />
             <Route path="/discussion/:id" element={<Dashboard />} />
             <Route path="/social" element={<Dashboard />} />
+            <Route path="/shadow" element={<Dashboard />} />
+            <Route path="/network" element={<Dashboard />} />
+            <Route path="/trust" element={<Dashboard />} />
             <Route path="/leaderboard" element={<Dashboard />} />
             <Route path="/settings" element={<Dashboard />} />
             <Route path="/notifications" element={<Dashboard />} />
