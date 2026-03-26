@@ -446,7 +446,7 @@ const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || 'https://tradelens
 
 export async function createTrade(tradeData: any) {
     try {
-        const payload = {
+        const payload: Record<string, any> = {
             authorId: tradeData.authorId,
             authorName: tradeData.authorName,
             authorReputation: tradeData.authorReputation || 0,
@@ -461,9 +461,13 @@ export async function createTrade(tradeData: any) {
             rationale: tradeData.rationale,
             rationaleTags: tradeData.rationaleTags || [],
             confidenceScore: tradeData.confidenceScore || 0,
-            imageUrl: tradeData.imageUrl || null,
             timestamp: new Date().toISOString()
         };
+
+        // Only include imageUrl if it has a value — Appwrite rejects null for string attributes
+        if (tradeData.imageUrl) {
+            payload.imageUrl = tradeData.imageUrl;
+        }
 
         return await databases.createDocument(
             DATABASE_ID,
@@ -482,7 +486,7 @@ export async function getTrades() {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.TRADES,
-            [Query.orderDesc('timestamp'), Query.limit(100)]
+            [Query.orderDesc('$createdAt'), Query.limit(100)]
         );
 
         return response.documents.map((trade: any) => ({
@@ -575,11 +579,10 @@ export async function updateFeedback(feedbackId: string, updates: any) {
 
 export async function createPost(postData: any) {
     try {
-        const payload = {
+        const payload: Record<string, any> = {
             authorId: postData.authorId,
             authorName: postData.authorName,
             authorHandle: postData.authorHandle || postData.authorName,
-            authorAvatar: postData.authorAvatar || null,
             title: postData.title,
             content: postData.content,
             tag: postData.tag,
@@ -589,6 +592,11 @@ export async function createPost(postData: any) {
             comments: JSON.stringify([]),
             createdAt: new Date().toISOString()
         };
+
+        // Only include authorAvatar if it has a value — Appwrite rejects null for string attributes
+        if (postData.authorAvatar) {
+            payload.authorAvatar = postData.authorAvatar;
+        }
 
         const doc = await databases.createDocument(
             DATABASE_ID,
@@ -600,7 +608,7 @@ export async function createPost(postData: any) {
             ...doc,
             id: doc.$id,
             comments: [],
-            timestamp: (doc as any).createdAt
+            timestamp: (doc as any).createdAt || doc.$createdAt
         };
     } catch (error) {
         console.error('Error creating post in Appwrite:', error);
@@ -613,7 +621,7 @@ export async function getPosts() {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.DISCUSSIONS,
-            [Query.orderDesc('createdAt'), Query.limit(100)]
+            [Query.orderDesc('$createdAt'), Query.limit(100)]
         );
 
         return response.documents.map((post: any) => {
@@ -632,7 +640,7 @@ export async function getPosts() {
                 id: post.$id,
                 authorId: post.authorId,
                 authorName: post.authorName,
-                authorHandle: post.authorHandle || `user_${post.authorId.substring(0, 5)}`,
+                authorHandle: post.authorHandle || `user_${post.authorId?.substring(0, 5)}`,
                 authorAvatar: post.authorAvatar,
                 title: post.title,
                 content: post.content,
