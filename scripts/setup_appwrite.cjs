@@ -88,7 +88,7 @@ async function setup() {
         await createAttribute(dbId, 'posts', 'string', 'authorId', 36, true);
         await createAttribute(dbId, 'posts', 'string', 'authorName', 255, false);
         await createAttribute(dbId, 'posts', 'string', 'title', 255, true);
-        await createAttribute(dbId, 'posts', 'string', 'content', 10000, true);
+        await createAttribute(dbId, 'posts', 'string', 'content', 1500, true);
         await createAttribute(dbId, 'posts', 'integer', 'upvotes', false, 0, 1000000, 0);
         await createAttribute(dbId, 'posts', 'datetime', 'createdAt', false);
 
@@ -110,7 +110,7 @@ async function setup() {
         await createAttribute(dbId, 'trades', 'float', 'stopLoss', true, -1000000, 1000000000, null);
         await createAttribute(dbId, 'trades', 'float', 'takeProfit', true, -1000000, 1000000000, null, true); // array
         await createAttribute(dbId, 'trades', 'string', 'timeHorizon', 100, true);
-        await createAttribute(dbId, 'trades', 'string', 'rationale', 10000, true);
+        await createAttribute(dbId, 'trades', 'string', 'rationale', 3000, true);
         await createAttribute(dbId, 'trades', 'string', 'rationaleTags', 255, false, null, true); // array
         await createAttribute(dbId, 'trades', 'float', 'confidenceScore', false, 0, 100, 0);
         await createAttribute(dbId, 'trades', 'string', 'imageUrl', 2048, false);
