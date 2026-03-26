@@ -511,84 +511,7 @@ export async function getTrades() {
     }
 }
 
-// --- Discussion Functions ---
 
-export async function createDiscussion(discussionData: any) {
-    try {
-        const document = await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.DISCUSSIONS,
-            ID.unique(),
-            {
-                authorId: discussionData.authorId,
-                authorName: discussionData.authorName,
-                authorHandle: discussionData.authorHandle || discussionData.authorName, // fallback
-                authorAvatar: discussionData.authorAvatar || null,
-                title: discussionData.title,
-                content: discussionData.content,
-                tag: discussionData.tag,
-                upvotes: 0,
-                commentCount: 0,
-                isPinned: false,
-                timestamp: new Date().toISOString(),
-                comments: '[]' // initialized as empty JSON array
-            }
-        );
-
-        return {
-            ...document,
-            id: document.$id,
-            comments: [] // parsed to empty array for frontend
-        };
-    } catch (error) {
-        console.error('Error creating discussion in Appwrite:', error);
-        throw error;
-    }
-}
-
-
-export async function getDiscussions() {
-    try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.DISCUSSIONS,
-            [
-                Query.orderDesc('timestamp'),
-                Query.limit(50)
-            ]
-        );
-
-        return response.documents.map((doc: any) => {
-            let parsedComments = [];
-            try {
-                if (doc.comments) {
-                    parsedComments = JSON.parse(doc.comments);
-                }
-            } catch (e) {
-                console.warn('Failed to parse comments JSON for post', doc.$id);
-            }
-
-            return {
-                id: doc.$id,
-                authorId: doc.authorId,
-                authorName: doc.authorName,
-                authorHandle: doc.authorHandle,
-                authorAvatar: doc.authorAvatar,
-                title: doc.title,
-                content: doc.content,
-                tag: doc.tag,
-                upvotes: doc.upvotes || 0,
-                commentCount: doc.commentCount || 0,
-                isPinned: doc.isPinned || false,
-                comments: parsedComments,
-                timestamp: doc.timestamp || doc.$createdAt
-            };
-        });
-    } catch (error) {
-        console.error('Error fetching discussions from Appwrite:', error);
-        return [];
-    }
-}
 
 // Feedback functions
 export async function createFeedback(feedbackData: any) {
@@ -648,15 +571,15 @@ export async function updateFeedback(feedbackId: string, updates: any) {
     }
 }
 
-// --- Post Feed Functions (via AI Backend) ---
+// --- Post Feed Functions (Appwrite Native) ---
 
 export async function createPost(postData: any) {
     try {
         const payload = {
             authorId: postData.authorId,
             authorName: postData.authorName,
-            authorHandle: postData.authorHandle,
-            authorAvatar: postData.authorAvatar,
+            authorHandle: postData.authorHandle || postData.authorName,
+            authorAvatar: postData.authorAvatar || null,
             title: postData.title,
             content: postData.content,
             tag: postData.tag,
@@ -664,8 +587,7 @@ export async function createPost(postData: any) {
             commentCount: 0,
             isPinned: false,
             comments: JSON.stringify([]),
-            createdAt: new Date().toISOString(),
-            timestamp: new Date().toISOString()
+            createdAt: new Date().toISOString()
         };
 
         const doc = await databases.createDocument(
@@ -677,6 +599,7 @@ export async function createPost(postData: any) {
         return {
             ...doc,
             id: doc.$id,
+            comments: [],
             timestamp: (doc as any).createdAt
         };
     } catch (error) {
@@ -690,30 +613,46 @@ export async function getPosts() {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.DISCUSSIONS,
-            [Query.limit(100)] // We'll sort manually if needed or just use default.
+            [Query.orderDesc('createdAt'), Query.limit(100)]
         );
 
-        // Sort manually by date for robustness if multiple potential fields exist
-        return response.documents.map((post: any) => ({
-            id: post.$id,
-            authorId: post.authorId,
-            authorName: post.authorName,
-            authorHandle: post.authorHandle || `user_${post.authorId.substring(0, 5)}`,
-            authorAvatar: post.authorAvatar,
-            title: post.title,
-            content: post.content,
-            tag: post.tag,
-            upvotes: post.upvotes || 0,
-            commentCount: post.commentCount || 0,
-            isPinned: post.isPinned || false,
-            comments: post.comments ? (typeof post.comments === 'string' ? JSON.parse(post.comments) : post.comments) : [],
-            timestamp: post.createdAt || post.timestamp || new Date().toISOString(),
-        })).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        return response.documents.map((post: any) => {
+            let parsedComments: any[] = [];
+            try {
+                if (post.comments && typeof post.comments === 'string') {
+                    parsedComments = JSON.parse(post.comments);
+                } else if (Array.isArray(post.comments)) {
+                    parsedComments = post.comments;
+                }
+            } catch (e) {
+                console.warn('Failed to parse comments for post', post.$id);
+            }
+
+            return {
+                id: post.$id,
+                authorId: post.authorId,
+                authorName: post.authorName,
+                authorHandle: post.authorHandle || `user_${post.authorId.substring(0, 5)}`,
+                authorAvatar: post.authorAvatar,
+                title: post.title,
+                content: post.content,
+                tag: post.tag,
+                upvotes: post.upvotes || 0,
+                commentCount: post.commentCount || 0,
+                isPinned: post.isPinned || false,
+                comments: parsedComments,
+                timestamp: post.createdAt || post.$createdAt
+            };
+        });
     } catch (error) {
         console.error('Error fetching posts from Appwrite:', error);
         return [];
     }
 }
+
+// Aliases for backward compatibility
+export const createDiscussion = createPost;
+export const getDiscussions = getPosts;
 
 export async function submitContactForm(data: { name: string; email: string; subject: string; message: string; }) {
     try {
