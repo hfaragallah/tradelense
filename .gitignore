@@ -32,3 +32,7 @@ __pycache__/
 *.pyc
 ai-engine/Miniconda3-latest-MacOSX-arm64.sh
 testenv/
+ai-engine/miniconda.sh
+ai-engine/trades.db
+ai-engine/requirements_local_snapshot.txt
+test_key.py

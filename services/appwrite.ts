@@ -10,8 +10,8 @@ if (!endpoint || !projectId) {
 }
 
 client
-    .setEndpoint(endpoint || 'https://cloud.appwrite.io/v1')
-    .setProject(projectId || '');
+    .setEndpoint(endpoint || 'https://fra.cloud.appwrite.io/v1')
+    .setProject(projectId || '698d7ab00021a58fe096');
 
 // Verify Appwrite backend connection on startup
 client.ping().then(() => {
