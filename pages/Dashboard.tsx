@@ -558,31 +558,31 @@ const Dashboard: React.FC = () => {
         }
 
         if (fetchedLeaderboard && fetchedLeaderboard.length > 0) {
-          // Map Appwrite Profile to what Sidebar expects
+          // Map AI Backend user to leaderboard format
           const mappedLeaderboard = fetchedLeaderboard.map((u: any, idx: number) => ({
             rank: idx + 1,
-            traderId: u.userId,
+            traderId: u.id,
             name: u.name || 'Anonymous',
-            reputation: u.reputationScore,
-            disciplineScore: 90, // Fallback if not in schema
+            reputation: u.reputation || 0,
+            disciplineScore: 90,
             avoidanceRate: 90
           }));
           setLeaderboard(mappedLeaderboard);
           
           // Map to TraderProfile for search
           const mappedUsers = fetchedLeaderboard.map((u: any) => ({
-            id: u.userId || u.$id,
+            id: u.id,
             name: u.name || 'Anonymous',
-            handle: u.handle || `@user_${(u.userId || u.$id).substring(0, 5)}`,
-            avatar: u.avatar,
-            reputationScore: u.reputationScore || 0,
+            handle: u.handle || `@user_${(u.id || '').substring(0, 5)}`,
+            avatar: u.avatar_url,
+            reputationScore: u.reputation || 0,
             points: u.points || 0,
-            winRate: u.winRate || 0,
-            joinedDate: u.$createdAt || new Date().toISOString(),
-            riskAdjustedReturn: u.riskAdjustedReturn || 0,
-            totalTrades: u.totalTrades || 0,
-            followersCount: u.followersCount || 0,
-            followingCount: u.followingCount || 0,
+            winRate: 0,
+            joinedDate: u.created_at || new Date().toISOString(),
+            riskAdjustedReturn: 0,
+            totalTrades: 0,
+            followersCount: 0,
+            followingCount: 0,
             badges: [],
             accuracyHistory: [],
           }));
@@ -630,9 +630,9 @@ const Dashboard: React.FC = () => {
       // Fetch or Create Profile
       const syncProfile = async () => {
         try {
-          const [{ profile, isNew }, followingRes] = await Promise.all([
+          const [{ profile, isNew }, followingIds] = await Promise.all([
             syncUserProfile(user),
-            import('../services/appwrite').then(m => m.getFollowing(user.$id))
+            import('../services/appwrite').then(m => m.getFollowingIds(user.$id))
           ]);
 
           if (profile) {
@@ -672,8 +672,8 @@ const Dashboard: React.FC = () => {
             }
           }
           
-          if (followingRes && followingRes.documents) {
-            setFollowedTraders(followingRes.documents.map((doc: any) => doc.followingId));
+          if (followingIds && followingIds.length > 0) {
+            setFollowedTraders(followingIds);
           }
         } catch (err) {
           console.error("Failed to sync profile:", err);

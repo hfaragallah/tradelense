@@ -18,7 +18,7 @@ const TradeSchema = z.object({
   entryMax: z.number().positive().optional(),
   stopLoss: z.number().positive("Stop loss must be positive"),
   takeProfit: z.array(z.number().positive()).min(1, "At least one TP required"),
-  rationale: z.string().min(20, "Rationale must be at least 20 chars").max(1000, "Rationale too long").refine(val => !/<script/i.test(val), "Invalid characters detected"),
+  rationale: z.string().min(1, "Rationale is required").max(1000, "Rationale too long").refine(val => !/<script/i.test(val), "Invalid characters detected"),
 });
 
 export const CreateTradeModal: React.FC<CreateTradeModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -118,7 +118,7 @@ export const CreateTradeModal: React.FC<CreateTradeModalProps> = ({ isOpen, onCl
     });
 
     if (!validation.success) {
-      setError(validation.error.errors[0].message);
+      setError((validation as any).error.errors[0].message);
       return;
     }
 

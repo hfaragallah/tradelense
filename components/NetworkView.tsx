@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TraderProfile } from '../types';
 import { Users, UserPlus, UserCheck, Shield, TrendingUp, Search } from 'lucide-react';
-import { getFollowers, getFollowing, getProfile } from '../services/appwrite';
+import { getFollowers, getFollowing } from '../services/appwrite';
 
 interface NetworkViewProps {
   currentUserProfile: TraderProfile;
@@ -25,25 +25,45 @@ export const NetworkView: React.FC<NetworkViewProps> = ({
     const fetchNetwork = async () => {
       setIsLoading(true);
       try {
-        // Fetch Following
-        const followingRes = await getFollowing(currentUserProfile.id);
-        const followingProfiles = await Promise.all(
-          followingRes.documents.map(async (doc: any) => {
-            const profile = await getProfile(doc.followingId);
-            return profile as unknown as TraderProfile;
-          })
-        );
-        setFollowingList(followingProfiles.filter(p => p !== null));
+        // Fetch Following - API now returns user objects directly
+        const followingUsers = await getFollowing(currentUserProfile.id);
+        const mappedFollowing = (followingUsers || []).map((u: any) => ({
+          id: u.id,
+          name: u.name || 'Anonymous',
+          handle: u.handle || `@user`,
+          avatar: u.avatar_url,
+          reputationScore: u.reputation || 0,
+          winRate: 0,
+          points: u.points || 0,
+          joinedDate: u.created_at || new Date().toISOString(),
+          riskAdjustedReturn: 0,
+          totalTrades: 0,
+          followersCount: 0,
+          followingCount: 0,
+          badges: [],
+          accuracyHistory: [],
+        }));
+        setFollowingList(mappedFollowing);
 
-        // Fetch Followers
-        const followersRes = await getFollowers(currentUserProfile.id);
-        const followersProfiles = await Promise.all(
-          followersRes.documents.map(async (doc: any) => {
-            const profile = await getProfile(doc.followerId);
-            return profile as unknown as TraderProfile;
-          })
-        );
-        setFollowersList(followersProfiles.filter(p => p !== null));
+        // Fetch Followers - API now returns user objects directly
+        const followerUsers = await getFollowers(currentUserProfile.id);
+        const mappedFollowers = (followerUsers || []).map((u: any) => ({
+          id: u.id,
+          name: u.name || 'Anonymous',
+          handle: u.handle || `@user`,
+          avatar: u.avatar_url,
+          reputationScore: u.reputation || 0,
+          winRate: 0,
+          points: u.points || 0,
+          joinedDate: u.created_at || new Date().toISOString(),
+          riskAdjustedReturn: 0,
+          totalTrades: 0,
+          followersCount: 0,
+          followingCount: 0,
+          badges: [],
+          accuracyHistory: [],
+        }));
+        setFollowersList(mappedFollowers);
       } catch (error) {
         console.error("Error fetching network:", error);
       } finally {

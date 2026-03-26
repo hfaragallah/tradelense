@@ -12,7 +12,7 @@ interface CreateDiscussionModalProps {
 // Zod Schema
 const DiscussionSchema = z.object({
   title: z.string().min(5, "Title too short").max(100, "Title too long").refine(val => !/<script/i.test(val), "Invalid characters detected"),
-  content: z.string().min(20, "Content must be at least 20 characters").max(2000, "Content limit exceeded").refine(val => !/<script/i.test(val), "Invalid characters detected"),
+  content: z.string().min(1, "Content is required").max(2000, "Content limit exceeded").refine(val => !/<script/i.test(val), "Invalid characters detected"),
 });
 
 export const CreateDiscussionModal: React.FC<CreateDiscussionModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -55,7 +55,7 @@ export const CreateDiscussionModal: React.FC<CreateDiscussionModalProps> = ({ is
     const validation = DiscussionSchema.safeParse({ title, content });
     
     if (!validation.success) {
-        setError(validation.error.errors[0].message);
+        setError((validation as any).error.errors[0].message);
         return;
     }
 

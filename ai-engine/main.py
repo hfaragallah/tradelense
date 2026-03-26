@@ -96,6 +96,15 @@ def init_db():
             created_at TEXT
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS follows (
+            id TEXT PRIMARY KEY,
+            follower_id TEXT NOT NULL,
+            following_id TEXT NOT NULL,
+            created_at TEXT,
+            UNIQUE(follower_id, following_id)
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -161,6 +170,16 @@ class UserResponse(BaseModel):
     reputation: int
     points: int
     is_admin: bool
+    created_at: str
+
+class FollowCreate(BaseModel):
+    follower_id: str
+    following_id: str
+
+class FollowResponse(BaseModel):
+    id: str
+    follower_id: str
+    following_id: str
     created_at: str
 
 class TradeResponse(BaseModel):
@@ -416,6 +435,114 @@ async def get_user_by_id(user_id: str):
     except Exception as e:
         print(f"Error fetching user by id: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Follow Endpoints ---
+
+@app.post("/api/follow", response_model=FollowResponse)
+async def follow_user(follow: FollowCreate):
+    if follow.follower_id == follow.following_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    try:
+        follow_id = f"f_{uuid.uuid4().hex[:8]}"
+        created_at = datetime.utcnow().isoformat()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR IGNORE INTO follows (id, follower_id, following_id, created_at)
+            VALUES (?, ?, ?, ?)
+        ''', (follow_id, follow.follower_id, follow.following_id, created_at))
+        conn.commit()
+        conn.close()
+        return FollowResponse(
+            id=follow_id,
+            follower_id=follow.follower_id,
+            following_id=follow.following_id,
+            created_at=created_at
+        )
+    except Exception as e:
+        print(f"Error following user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/follow")
+async def unfollow_user(follower_id: str, following_id: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            DELETE FROM follows WHERE follower_id = ? AND following_id = ?
+        ''', (follower_id, following_id))
+        conn.commit()
+        conn.close()
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Error unfollowing user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/users/{user_id}/following", response_model=List[UserResponse])
+async def get_following(user_id: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.* FROM users u
+            JOIN follows f ON u.id = f.following_id
+            WHERE f.follower_id = ?
+            ORDER BY f.created_at DESC
+        ''', (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            UserResponse(
+                id=row["id"], email=row["email"], name=row["name"],
+                handle=row["handle"], avatar_url=row["avatar_url"],
+                reputation=row["reputation"], points=row["points"],
+                is_admin=bool(row["is_admin"]), created_at=row["created_at"]
+            ) for row in rows
+        ]
+    except Exception as e:
+        print(f"Error fetching following: {e}")
+        return []
+
+@app.get("/api/users/{user_id}/followers", response_model=List[UserResponse])
+async def get_followers(user_id: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.* FROM users u
+            JOIN follows f ON u.id = f.follower_id
+            WHERE f.following_id = ?
+            ORDER BY f.created_at DESC
+        ''', (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            UserResponse(
+                id=row["id"], email=row["email"], name=row["name"],
+                handle=row["handle"], avatar_url=row["avatar_url"],
+                reputation=row["reputation"], points=row["points"],
+                is_admin=bool(row["is_admin"]), created_at=row["created_at"]
+            ) for row in rows
+        ]
+    except Exception as e:
+        print(f"Error fetching followers: {e}")
+        return []
+
+@app.get("/api/users/{user_id}/following-ids")
+async def get_following_ids(user_id: str):
+    """Returns just the list of user IDs that this user follows (lightweight)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('SELECT following_id FROM follows WHERE follower_id = ?', (user_id,))
+        ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return ids
+    except Exception as e:
+        print(f"Error fetching following ids: {e}")
+        return []
 
 @app.get("/api/posts", response_model=List[PostResponse])
 async def get_posts():
