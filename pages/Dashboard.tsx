@@ -992,16 +992,17 @@ const Dashboard: React.FC = () => {
         };
 
         const createdPost = await createPost(newPostData);
+        const post = createdPost as any;
 
         // Map back to DiscussionPost
         const newPost: DiscussionPost = {
             ...postData,
-            id: createdPost.id,
-            timestamp: createdPost.timestamp,
-            upvotes: createdPost.upvotes,
-            commentCount: createdPost.commentCount,
-            comments: createdPost.comments || [],
-            authorName: createdPost.authorName,
+            id: post.id,
+            timestamp: post.timestamp,
+            upvotes: post.upvotes,
+            commentCount: post.commentCount,
+            comments: post.comments || [],
+            authorName: post.authorName,
         };
 
         setDiscussions([newPost, ...discussions]);

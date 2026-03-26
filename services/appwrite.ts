@@ -655,19 +655,30 @@ export async function createPost(postData: any) {
         const payload = {
             authorId: postData.authorId,
             authorName: postData.authorName,
+            authorHandle: postData.authorHandle,
+            authorAvatar: postData.authorAvatar,
             title: postData.title,
             content: postData.content,
             tag: postData.tag,
             upvotes: 0,
-            createdAt: new Date().toISOString()
+            commentCount: 0,
+            isPinned: false,
+            comments: JSON.stringify([]),
+            createdAt: new Date().toISOString(),
+            timestamp: new Date().toISOString()
         };
 
-        return await databases.createDocument(
+        const doc = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.DISCUSSIONS,
             ID.unique(),
             payload
         );
+        return {
+            ...doc,
+            id: doc.$id,
+            timestamp: (doc as any).createdAt
+        };
     } catch (error) {
         console.error('Error creating post in Appwrite:', error);
         throw error;
@@ -679,22 +690,25 @@ export async function getPosts() {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.DISCUSSIONS,
-            [Query.orderDesc('createdAt'), Query.limit(100)]
+            [Query.limit(100)] // We'll sort manually if needed or just use default.
         );
 
+        // Sort manually by date for robustness if multiple potential fields exist
         return response.documents.map((post: any) => ({
             id: post.$id,
             authorId: post.authorId,
             authorName: post.authorName,
+            authorHandle: post.authorHandle || `user_${post.authorId.substring(0, 5)}`,
+            authorAvatar: post.authorAvatar,
             title: post.title,
             content: post.content,
             tag: post.tag,
             upvotes: post.upvotes || 0,
             commentCount: post.commentCount || 0,
             isPinned: post.isPinned || false,
-            comments: post.comments || [],
-            timestamp: post.createdAt,
-        }));
+            comments: post.comments ? (typeof post.comments === 'string' ? JSON.parse(post.comments) : post.comments) : [],
+            timestamp: post.createdAt || post.timestamp || new Date().toISOString(),
+        })).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error) {
         console.error('Error fetching posts from Appwrite:', error);
         return [];

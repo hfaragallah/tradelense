@@ -87,9 +87,15 @@ async function setup() {
         }
         await createAttribute(dbId, 'posts', 'string', 'authorId', 36, true);
         await createAttribute(dbId, 'posts', 'string', 'authorName', 255, false);
+        await createAttribute(dbId, 'posts', 'string', 'authorHandle', 255, false);
+        await createAttribute(dbId, 'posts', 'string', 'authorAvatar', 1000, false);
         await createAttribute(dbId, 'posts', 'string', 'title', 255, true);
-        await createAttribute(dbId, 'posts', 'string', 'content', 1500, true);
+        await createAttribute(dbId, 'posts', 'string', 'content', 5000, true);
+        await createAttribute(dbId, 'posts', 'string', 'tag', 50, true);
         await createAttribute(dbId, 'posts', 'integer', 'upvotes', false, 0, 1000000, 0);
+        await createAttribute(dbId, 'posts', 'integer', 'commentCount', false, 0, 1000000, 0);
+        await createAttribute(dbId, 'posts', 'boolean', 'isPinned', false, false);
+        await createAttribute(dbId, 'posts', 'string', 'comments', 5000, false); // Stringified JSON
         await createAttribute(dbId, 'posts', 'datetime', 'createdAt', false);
 
         // TRADES
