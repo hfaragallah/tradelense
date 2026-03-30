@@ -326,14 +326,6 @@ const LeftSidebar = ({
         </div>
       )}
 
-      {/* Footer Links */}
-      <div className="mt-8 pt-4 border-t border-surface flex flex-wrap gap-x-3 gap-y-2 text-[10px] text-text-muted font-medium px-2">
-        <a href="/about" className="hover:text-status-neutral transition-colors">About</a>
-        <a href="/guidelines" className="hover:text-status-neutral transition-colors">Guidelines</a>
-        <a href="/privacy-terms" className="hover:text-status-neutral transition-colors">Privacy & Terms</a>
-        <a href="/help-center" className="hover:text-status-neutral transition-colors">Help Center</a>
-        <div className="w-full mt-1">© 2026 TraderLense</div>
-      </div>
     </div>
   )
 };
@@ -473,8 +465,14 @@ const RightSidebar = ({
         </div>
       </div>
 
-
-
+      {/* Footer Links */}
+      <div className="mt-8 pt-4 border-t border-surface flex flex-wrap gap-x-3 gap-y-2 text-[10px] text-text-muted font-medium px-2">
+        <a href="/about" className="hover:text-status-neutral transition-colors">About</a>
+        <a href="/guidelines" className="hover:text-status-neutral transition-colors">Guidelines</a>
+        <a href="/privacy-terms" className="hover:text-status-neutral transition-colors">Privacy & Terms</a>
+        <a href="/help-center" className="hover:text-status-neutral transition-colors">Help Center</a>
+        <div className="w-full mt-1">© 2026 TraderLense</div>
+      </div>
     </div>
   );
 };
