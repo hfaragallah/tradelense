@@ -473,14 +473,8 @@ const RightSidebar = ({
         </div>
       </div>
 
-      {/* Footer Links */}
-      <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 text-[10px] text-text-muted justify-center text-center">
-        <a href="#" className="hover:underline">About</a>
-        <a href="#" className="hover:underline">Guidelines</a>
-        <a href="#" className="hover:underline">Privacy & Terms</a>
-        <a href="#" className="hover:underline">Help Center</a>
-        <span>TraderLense © 2024</span>
-      </div>
+
+
     </div>
   );
 };
