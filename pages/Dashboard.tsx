@@ -1216,7 +1216,31 @@ const Dashboard: React.FC = () => {
             onToggleFollow={handleToggleFollow}
             followedTraders={followedTraders}
           />
-        ) : null;
+        ) : (
+          <div className="animate-fade-in space-y-6">
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold text-text-primary mb-2 flex items-center gap-3">
+                <Users size={32} className="text-status-neutral" /> My Network
+              </h1>
+              <p className="text-text-muted">Manage your connections and discover top-performing traders.</p>
+            </header>
+            <div className="py-20 flex flex-col items-center justify-center text-center bg-background-secondary border border-surface rounded-2xl">
+              <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-4 text-text-muted">
+                <Users size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-text-primary mb-2">Sign in to view your network</h3>
+              <p className="text-text-muted max-w-sm mb-6">
+                Log in or create an account to follow traders and build your network.
+              </p>
+              <button
+                onClick={() => handleOpenAuth('login')}
+                className="px-6 py-3 bg-status-neutral hover:bg-blue-600 text-white rounded-lg transition-colors font-bold"
+              >
+                Log In / Sign Up
+              </button>
+            </div>
+          </div>
+        );
 
       case 'shadow':
         const shadowedTrades = trades.filter(t => t.isShadowed);
