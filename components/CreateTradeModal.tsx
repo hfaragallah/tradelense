@@ -66,17 +66,24 @@ export const CreateTradeModal: React.FC<CreateTradeModalProps> = ({ isOpen, onCl
         try {
           const aiData = await analyzeTradeImage(base64);
           if (aiData) {
-            // Auto-populate form
-            setAsset(aiData.asset);
-            setMarket(aiData.market);
-            setType(aiData.type);
-            setEntryMin(aiData.entry.toString());
+            // Auto-populate form with fallbacks
+            setAsset(aiData.asset || '');
+            setMarket(aiData.market || 'Crypto');
+            setType(aiData.type || TradeType.LONG);
+            setEntryMin(aiData.entry?.toString() || '');
             setEntryMax(aiData.entryMax ? aiData.entryMax.toString() : '');
-            setStopLoss(aiData.stopLoss.toString());
-            setTakeProfit(aiData.takeProfit.join(', '));
-            setRationale(aiData.rationale);
-            setHorizon(aiData.timeHorizon);
-            setTags(aiData.rationaleTags);
+            setStopLoss(aiData.stopLoss?.toString() || '');
+            
+            // Handle takeProfit which might be a single number, array, or missing
+            const tp = aiData.takeProfit;
+            let tpString = '';
+            if (Array.isArray(tp)) tpString = tp.join(', ');
+            else if (tp !== undefined) tpString = String(tp);
+            setTakeProfit(tpString);
+            
+            setRationale(aiData.rationale || '');
+            if (aiData.timeHorizon) setHorizon(aiData.timeHorizon);
+            if (Array.isArray(aiData.rationaleTags)) setTags(aiData.rationaleTags);
           } else {
             setError("Could not extract trade details from image.");
           }

@@ -220,7 +220,8 @@ export const analyzeTradeImage = async (base64Image: string): Promise<import("..
 
     console.log("AI Image Analysis:", text); // Debugging
 
-    const result = JSON.parse(text) as import("../types").TradeImageAnalysisResult;
+    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+    const result = JSON.parse(cleanText) as import("../types").TradeImageAnalysisResult;
 
     // Normalize TimeHorizon
     const horizonMap: Record<string, string> = {
